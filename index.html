@@ -422,6 +422,17 @@
                     <li>Reset MENACE and compare how fast it learns.</li>
                 </ol>
 
+                <h3>Why only 304 matchboxes?</h3>
+                <p>A standard game has 5,478 possible board positions. The original MENACE needed only 304 matchboxes to play. It used four shortcuts:</p>
+                <ul>
+                    <li><strong>Symmetry.</strong> Turning or mirroring a board gives the same game. One matchbox covers all of these copies. This cuts the count by about 7 times.</li>
+                    <li><strong>MENACE always plays X, the first player.</strong> It needs boxes only for its own turns: 1, 3, 5, 7 and 9. It never needs a box for the human's turns (2, 4, 6 and 8).</li>
+                    <li><strong>No box for the last square.</strong> On turn 9 only one square is empty. MENACE has no choice, so it needs no box.</li>
+                    <li><strong>No boxes for finished games.</strong> A board with a win or a draw is over. MENACE makes no move there.</li>
+                </ul>
+                <p>The count works like this. Start with 2,423 positions where X is to move and the game is not over. Remove the 222 turn-9 positions: 2,201 remain. Merge symmetric copies: 304 remain.</p>
+                <p>This web version does not merge symmetric boards. It keeps each position separately, so it uses more matchboxes.</p>
+
                 <h3>Limits</h3>
                 <p>Tic-Tac-Toe has only about 5,500 board positions. MENACE stores each one separately. Large problems need methods that <em>generalize</em>, such as neural networks, so that similar situations share what they learn. Real RL problems also have noisy and unknown rewards. MENACE is a simple, clear first step.</p>
 
