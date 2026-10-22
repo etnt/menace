@@ -488,7 +488,17 @@
                     <li><strong>Only MENACE's own turns need boxes.</strong> It never chooses your moves.</li>
                     <li><strong>No box for the last square.</strong> When only one square is left, there is no choice to make.</li>
                 </ul>
-                <p>Like Michie's machine, each box starts with 4 beads per move on MENACE's first turn, then 3, 2 and 1 on its later turns. Late moves have fewer beads, so they change faster.</p>
+                <h3>How many beads does a new box get?</h3>
+                <p>Each board position has its own matchbox. As in Michie's machine, the starting number of beads depends on how far into the game that position comes:</p>
+                <table>
+                    <tr><th>MENACE's turn</th><th>Board when MENACE moves</th><th>Boxes</th><th>Starting beads per colour</th></tr>
+                    <tr><td>1st</td><td>empty</td><td>1</td><td>4</td></tr>
+                    <tr><td>2nd</td><td>2 marks</td><td>12</td><td>3</td></tr>
+                    <tr><td>3rd</td><td>4 marks</td><td>108</td><td>2</td></tr>
+                    <tr><td>4th</td><td>6 marks</td><td>183</td><td>1</td></tr>
+                </table>
+                <p>These are only the starting counts. After every game, wins, draws and losses change the beads in each box that was used. Late boxes start with fewer beads so they learn faster: a single loss can empty a 1-bead move, while the empty-board box hardly notices. That makes sense, because a loss is usually caused by the last few moves.</p>
+                <p class="hint">The box counts are for MENACE moving first, as in Michie's original. When MENACE plays second, the same 4, 3, 2, 1 pattern is used for its turns.</p>
 
                 <details>
                     <summary>For the curious: the exact count</summary>

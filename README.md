@@ -16,8 +16,12 @@ This version runs in your browser. It is one file: `index.html`.
 - Each board position has a **matchbox**. Boards that are turned or mirrored copies of each other share one matchbox.
 - A matchbox holds **beads**. Each bead is one possible move. Moves that are
   mirror copies of each other share one kind of bead.
-- As in the original, a matchbox starts with 4 beads per move on MENACE's
-  first turn, then 3, 2 and 1 on its later turns.
+- Each board position has its own matchbox. The box for the empty board
+  starts with 4 beads of each colour. Boxes for positions MENACE meets later
+  start with fewer: 3 on its second turn, 2 on its third, 1 on its fourth.
+  After that, wins, draws and losses change the counts. (Michie's MENACE
+  always moved first; this version uses the same pattern when MENACE plays
+  second.)
 - To play, MENACE picks a bead at random from the matchbox for the
   current position. More beads for a move means a higher chance to pick it.
 - After each game, MENACE updates the beads it used:
