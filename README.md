@@ -13,7 +13,7 @@ This version runs in your browser. It is one file: `index.html`.
 
 ## How it works
 
-- Each board position has a **matchbox**.
+- Each board position has a **matchbox**. Boards that are turned or mirrored copies of each other share one matchbox.
 - A matchbox holds **beads**. Each bead is one possible move.
 - To play, MENACE picks a bead at random from the matchbox for the
   current position. More beads for a move means a higher chance to pick it.

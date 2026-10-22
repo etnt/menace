@@ -426,12 +426,12 @@
                 <p>A standard game has 5,478 possible board positions. The original MENACE needed only 304 matchboxes to play. It used four shortcuts:</p>
                 <ul>
                     <li><strong>Symmetry.</strong> Turning or mirroring a board gives the same game. One matchbox covers all of these copies. This cuts the count by about 7 times.</li>
-                    <li><strong>MENACE always plays X, the first player.</strong> It needs boxes only for its own turns: 1, 3, 5, 7 and 9. It never needs a box for the human's turns (2, 4, 6 and 8).</li>
+                    <li><strong>MENACE always plays X, the first player.</strong> It needs boxes only for its own turns: 1, 3, 5 and 7. It never needs a box for the human's turns (2, 4, 6 and 8).</li>
                     <li><strong>No box for the last square.</strong> On turn 9 only one square is empty. MENACE has no choice, so it needs no box.</li>
                     <li><strong>No boxes for finished games.</strong> A board with a win or a draw is over. MENACE makes no move there.</li>
                 </ul>
                 <p>The count works like this. Start with 2,423 positions where X is to move and the game is not over. Remove the 222 turn-9 positions: 2,201 remain. Merge symmetric copies: 304 remain.</p>
-                <p>This web version does not merge symmetric boards. It keeps each position separately, so it uses more matchboxes.</p>
+                <p>This web version uses the same shortcuts. Turned and mirrored boards share one matchbox, and the forced last move uses no box.</p>
 
                 <h3>Limits</h3>
                 <p>Tic-Tac-Toe has only about 5,500 board positions. MENACE stores each one separately. Large problems need methods that <em>generalize</em>, such as neural networks, so that similar situations share what they learn. Real RL problems also have noisy and unknown rewards. MENACE is a simple, clear first step.</p>
@@ -509,7 +509,7 @@
         // 1. Constants, Initial State, Persistence Load/Save
         // =====================================================================
 
-        const STORAGE_KEY_MATCHBOX = 'menace_matchbox';
+        const STORAGE_KEY_MATCHBOX = 'menace_matchbox_v2'; // v2: symmetry-reduced matchboxes
         const STORAGE_KEY_STATS = 'menace_stats';
         
         // Represents a single move (0-8) and its associated bead count
@@ -616,8 +616,59 @@
          * @returns {string}
          */
         function getBoardKey(board, side) {
-            const cells = board.map(c => c === null ? '-' : c).join('');
-            return `${cells}|${side}`;
+            return canonicalForm(board, side).key;
+        }
+
+        // The 8 ways to turn or mirror a 3x3 board. Each entry lists, for each
+        // position of the turned board, the real cell it shows.
+        const SYMMETRIES = [
+            [0, 1, 2, 3, 4, 5, 6, 7, 8], // identity
+            [6, 3, 0, 7, 4, 1, 8, 5, 2], // rotate 90 degrees
+            [8, 7, 6, 5, 4, 3, 2, 1, 0], // rotate 180 degrees
+            [2, 5, 8, 1, 4, 7, 0, 3, 6], // rotate 270 degrees
+            [2, 1, 0, 5, 4, 3, 8, 7, 6], // mirror left-right
+            [6, 7, 8, 3, 4, 5, 0, 1, 2], // mirror top-bottom
+            [0, 3, 6, 1, 4, 7, 2, 5, 8], // mirror main diagonal
+            [8, 5, 2, 7, 4, 1, 6, 3, 0]  // mirror anti-diagonal
+        ];
+
+        /**
+         * Finds the canonical form of a board: the smallest of its 8 turned or
+         * mirrored copies. Boards that are copies of each other share one matchbox.
+         * @returns {{key: string, toReal: number[]}} The matchbox key, and
+         *   toReal[j] = the real cell that canonical cell j stands for.
+         */
+        function canonicalForm(board, side) {
+            let bestCells = null;
+            let bestMap = null;
+            for (const map of SYMMETRIES) {
+                const cells = map.map(cell => board[cell] || '-').join('');
+                if (bestCells === null || cells < bestCells) {
+                    bestCells = cells;
+                    bestMap = map;
+                }
+            }
+            return { key: `${bestCells}|${side}`, toReal: bestMap };
+        }
+
+        /**
+         * Chooses MENACE's move for a board.
+         * - If only one square is empty, the move is forced, so no matchbox is used.
+         * - Otherwise the move comes from the matchbox for this position.
+         * @param {boolean} readOnly - If true, never store a new matchbox (used for testing).
+         * @returns {{cell:number, move:number|null, key:string|null}|null} null means resign.
+         */
+        function menaceChoice(board, side, readOnly = false) {
+            if (board.filter(c => c === null).length === 1) {
+                return { cell: board.indexOf(null), move: null, key: null };
+            }
+            const form = canonicalForm(board, side);
+            const matchbox = readOnly
+                ? (MENACE_MATCHBOX[form.key] || freshMatchbox(board, side))
+                : getMatchbox(board, side);
+            const move = selectMove(matchbox);
+            if (move === null) return null;
+            return { cell: form.toReal[move], move, key: form.key };
         }
 
         /**
@@ -677,18 +728,23 @@
          * @returns {Array<MatchboxEntry>} - The matchbox for this state.
          */
         function getMatchbox(board, side) {
-            const key = getBoardKey(board, side);
-            if (!MENACE_MATCHBOX[key]) {
-                // Initialize all legal moves with 0 beads
-                const moves = [];
-                for (let i = 0; i < 9; i++) {
-                    if (isLegalMove(board, i)) {
-                        moves.push(new MatchboxEntry(i));
-                    }
-                }
-                MENACE_MATCHBOX[key] = moves;
+            const form = canonicalForm(board, side);
+            if (!MENACE_MATCHBOX[form.key]) {
+                MENACE_MATCHBOX[form.key] = freshMatchbox(board, side);
             }
-            return MENACE_MATCHBOX[key];
+            return MENACE_MATCHBOX[form.key];
+        }
+
+        /** A new matchbox: 4 beads for each legal move, in canonical move numbers. */
+        function freshMatchbox(board, side) {
+            const form = canonicalForm(board, side);
+            const entries = [];
+            for (let j = 0; j < 9; j++) {
+                if (isLegalMove(board, form.toReal[j])) {
+                    entries.push(new MatchboxEntry(j));
+                }
+            }
+            return entries;
         }
 
         /**
@@ -801,22 +857,21 @@
 
             // Alternates turns until the game ends.
             while (true) {
-                const boardKey = getBoardKey(board, currentTurn === 'menace' ? MENACE_MARK : OPPONENT_MARK);
                 let moveIndex;
 
                 if (currentTurn === 'menace') {
-                    // Get or create the matchbox for this state
-                    const matchbox = getMatchbox(board, MENACE_MARK);
-                    // Select a move using MENACE's weighted sampling
-                    moveIndex = selectMove(matchbox);
-                    if (moveIndex === null) {
+                    const choice = menaceChoice(board, MENACE_MARK);
+                    if (choice === null) {
                         // Empty matchbox: MENACE resigns, so the human wins
                         resigned = true;
                         winnerMark = OPPONENT_MARK;
                         break;
                     }
-                    // Record the move for later reinforcement
-                    menaceHistory.push({ moveIndex, boardKey });
+                    moveIndex = choice.cell;
+                    // Record the move for later reinforcement (forced moves have no matchbox)
+                    if (choice.key) {
+                        menaceHistory.push({ move: choice.move, boardKey: choice.key });
+                    }
                 } else {
                     // Random opponent makes a random legal move
                     moveIndex = randomOpponentMove(board);
@@ -853,7 +908,7 @@
 
             // Apply reinforcement to ALL of MENACE's moves in this game
             for (const record of menaceHistory) {
-                reinforceMove(record.moveIndex, outcome, record.boardKey);
+                reinforceMove(record.move, outcome, record.boardKey);
             }
 
             // Update global statistics
@@ -943,7 +998,7 @@
             gameState.gameMoveHistory = [];
             gameState.currentBoardKey = null;
             renderBoard();
-            updateMatchboxDisplay(getBoardKey(gameState.board, gameState.menaceMark));
+            updateMatchboxDisplay(gameState.board, gameState.menaceMark);
 
             if (gameState.currentPlayer === gameState.menaceMark) {
                 updateStatus(`Training complete! MENACE (${gameState.menaceMark}) is thinking...`);
@@ -1022,14 +1077,6 @@
             return count > 0 ? { share: total / count, positions: count } : null;
         }
 
-        function freshMatchbox(board) {
-            const entries = [];
-            for (let i = 0; i < 9; i++) {
-                if (board[i] === null) entries.push(new MatchboxEntry(i));
-            }
-            return entries;
-        }
-
         /** A perfect opponent's move: random among its best moves. */
         function perfectMove(board, side) {
             const scored = [];
@@ -1057,14 +1104,14 @@
                 while (true) {
                     let cell;
                     if (turn === menace) {
-                        // Read-only lookup: a missing box is a fresh box that is never stored
-                        const box = MENACE_MATCHBOX[getBoardKey(board, menace)] || freshMatchbox(board);
-                        cell = selectMove(box);
-                        if (cell === null) {
+                        // Read-only: a missing box is a fresh box that is never stored
+                        const choice = menaceChoice(board, menace, true);
+                        if (choice === null) {
                             result.resignations++;
                             outcome = 'loss';
                             break;
                         }
+                        cell = choice.cell;
                     } else {
                         cell = perfectMove(board, opponent);
                     }
@@ -1216,24 +1263,26 @@
         async function makeMenaceMove() {
             if (gameState.isGameOver || gameState.currentPlayer !== gameState.menaceMark) return;
 
-            const currentBoardKey = getBoardKey(gameState.board, gameState.menaceMark);
-            gameState.currentBoardKey = currentBoardKey;
-            const matchbox = getMatchbox(gameState.board, gameState.menaceMark);
-            
-            // 1. Select move (null means the matchbox is empty: resign)
-            const moveIndex = selectMove(matchbox);
-            if (moveIndex === null) {
+            const boardBefore = gameState.board.slice();
+            const choice = menaceChoice(gameState.board, gameState.menaceMark);
+            if (choice === null) {
                 resignGame();
                 return;
             }
+            const moveIndex = choice.cell;
 
-            // 2. Record move for history (with the key captured before the move)
-            gameState.gameMoveHistory.push({ 
-                player: 'MENACE', 
-                move: moveIndex, 
-                boardKey: currentBoardKey 
-            });
+            // Record the move for reinforcement (forced moves have no matchbox)
+            if (choice.key) {
+                gameState.gameMoveHistory.push({
+                    player: 'MENACE',
+                    move: choice.move,
+                    cell: moveIndex,
+                    boardKey: choice.key,
+                    board: boardBefore
+                });
+            }
 
+            
             // 3. Make move
             gameState.board[moveIndex] = gameState.menaceMark;
 
@@ -1270,7 +1319,7 @@
                 updateStatus("It's your turn! Make a move.");
             }
 
-            updateMatchboxDisplay(currentBoardKey);
+            updateMatchboxDisplay(boardBefore, gameState.menaceMark);
         }
 
         /**
@@ -1285,7 +1334,7 @@
             const changes = reinforceGame('loss');
             renderBoard();
             displayGameResult('loss', changes, true);
-            updateMatchboxDisplay(gameState.currentBoardKey);
+            updateMatchboxDisplay(gameState.board, gameState.menaceMark);
         }
 
         /**
@@ -1320,7 +1369,7 @@
                 if (record.player === 'MENACE') {
                     const result = reinforceMove(record.move, outcome, record.boardKey);
                     if (result) {
-                        changes.push({ move: record.move, boardKey: record.boardKey, ...result });
+                        changes.push({ move: record.move, boardKey: record.boardKey, cell: record.cell, board: record.board, ...result });
                     }
                 }
             }
@@ -1384,18 +1433,18 @@
 
             const rewardText = { win: '+3', draw: '+1', loss: '−1' }[outcome];
             const cards = changes.map((change, i) => {
-                const cells = change.boardKey.split('|')[0];
+                const cells = change.board.map(v => v || '-');
                 let miniBoard = '';
                 for (let c = 0; c < 9; c++) {
-                    const picked = c === change.move ? ' picked' : '';
+                    const picked = c === change.cell ? ' picked' : '';
                     // The chosen cell is empty in the snapshot, so show MENACE's mark there
-                    const mark = c === change.move ? gameState.menaceMark : (cells[c] === '-' ? '' : cells[c]);
+                    const mark = c === change.cell ? gameState.menaceMark : (cells[c] === '-' ? '' : cells[c]);
                     miniBoard += `<div class="mini-cell${picked}">${mark}</div>`;
                 }
                 const sign = change.applied > 0 ? 'gain' : (change.applied < 0 ? 'drop' : 'flat');
                 const delta = change.applied > 0 ? `+${change.applied}` : (change.applied < 0 ? `−${Math.abs(change.applied)}` : '±0');
-                const row = Math.floor(change.move / 3) + 1;
-                const col = (change.move % 3) + 1;
+                const row = Math.floor(change.cell / 3) + 1;
+                const col = (change.cell % 3) + 1;
                 const note = change.applied === 0 && change.before === 0 ? ' (already empty)' : '';
                 return `
                     <div class="report-card">
@@ -1423,9 +1472,10 @@
             }
         }
 
-        function updateMatchboxDisplay(boardKey) {
+        function updateMatchboxDisplay(board, side) {
             matchboxDisplayElement.innerHTML = '';
-            const matchbox = MENACE_MATCHBOX[boardKey];
+            const form = canonicalForm(board, side);
+            const matchbox = MENACE_MATCHBOX[form.key];
             
             if (!matchbox) {
                 matchboxDisplayElement.innerHTML = '<p>No moves evaluated yet.</p>';
@@ -1433,16 +1483,18 @@
             }
 
             matchbox.forEach(entry => {
+                // Show the real cell (0-8) for this entry, not its canonical number
+                const cell = form.toReal[entry.move];
                 const moveElement = document.createElement('div');
                 moveElement.className = 'move-option';
-                moveElement.dataset.move = entry.move;
+                moveElement.dataset.move = cell;
                 moveElement.innerHTML = `
-                    <span>Move ${entry.move}</span>
+                    <span>Move ${cell}</span>
                     <span class="bead-count">${entry.beads} beads</span>
                 `;
                 // Highlight the move that was just played by MENACE, if history exists
                 const lastPlayed = gameState.gameMoveHistory.length > 0 ? gameState.gameMoveHistory[gameState.gameMoveHistory.length - 1] : null;
-                if (lastPlayed && lastPlayed.player === 'MENACE' && lastPlayed.move === entry.move) {
+                if (lastPlayed && lastPlayed.player === 'MENACE' && lastPlayed.cell === cell) {
                     moveElement.classList.add('selected');
                 }
                 matchboxDisplayElement.appendChild(moveElement);
@@ -1476,7 +1528,7 @@
             refreshLearningLevel();
 
             renderBoard();
-            updateMatchboxDisplay(getBoardKey(gameState.board, gameState.menaceMark));
+            updateMatchboxDisplay(gameState.board, gameState.menaceMark);
 
             if (gameState.currentPlayer === gameState.menaceMark) {
                 updateStatus(`MENACE (${gameState.menaceMark}) is thinking...`);
