@@ -372,6 +372,22 @@
             text-align: left;
             vertical-align: top;
         }
+        .explainer-body details {
+            margin: 12px 0;
+            padding: 8px 12px;
+            background: #faf7ef;
+            border-radius: 8px;
+        }
+        .explainer-body summary {
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .explainer-body .example {
+            background: #fffdf5;
+            border-left: 4px solid #f39c12;
+            padding: 8px 12px;
+            border-radius: 4px;
+        }
         .explainer-actions {
             text-align: center;
             margin-top: 20px;
@@ -400,30 +416,43 @@
 
         <dialog id="explainer" aria-labelledby="explainer-title">
             <div class="explainer-body">
-                <h2 id="explainer-title">How MENACE learns, and why it matters</h2>
+                <h2 id="explainer-title">What is MENACE?</h2>
 
-                <h3>The big idea</h3>
-                <p><strong>Reinforcement learning (RL)</strong> is learning by trial and error. An agent tries actions. It gets rewards for good results and penalties for bad ones. Over time it prefers the actions that worked. Nobody tells it the right answer.</p>
+                <p>In 1961 the British scientist Donald Michie built a machine that <strong>learns to play tic-tac-toe</strong>. It had no computer. It was made of about 300 matchboxes and a bag of coloured beads.</p>
+                <p>At first MENACE plays at random and loses a lot. Nobody teaches it any strategy. It gets better just by playing, winning and losing. This page is a copy of that machine.</p>
 
-                <h3>MENACE is RL in a box</h3>
-                <table>
-                    <tr><th>RL term</th><th>In MENACE</th></tr>
-                    <tr><td>Agent</td><td>MENACE (all the matchboxes together)</td></tr>
-                    <tr><td>State</td><td>One board position (one matchbox)</td></tr>
-                    <tr><td>Action</td><td>One move (one kind of bead)</td></tr>
-                    <tr><td>Policy</td><td>The bead counts in each box. They set how likely each move is.</td></tr>
-                    <tr><td>Reward</td><td>Bead changes: +3 for a win, +1 for a draw, −1 for a loss</td></tr>
-                    <tr><td>Exploration</td><td>The random bead draw. MENACE still tries moves it is unsure about.</td></tr>
-                    <tr><td>Episode</td><td>One game</td></tr>
-                </table>
+                <h3>How MENACE picks a move</h3>
+                <ol>
+                    <li>There is <strong>one matchbox for each board position</strong> MENACE can meet. The position is drawn on the lid.</li>
+                    <li>Inside each box are <strong>beads</strong>. Each colour stands for one empty square on that board.</li>
+                    <li>On its turn, MENACE finds the box that matches the board, shakes it, and <strong>pulls out one bead without looking</strong>. It plays on the square that bead stands for.</li>
+                </ol>
+                <p>So a move with many beads is likely to be picked. A move with few beads is rarely picked.</p>
 
-                <h3>Why it is a good teaching example</h3>
+                <h3>How MENACE learns</h3>
+                <p>When the game ends, MENACE goes back to every box it used and changes the beads:</p>
                 <ul>
-                    <li><strong>You can see the learning.</strong> The beads are the learned values. You watch them change in the matchbox view.</li>
-                    <li><strong>Delayed reward.</strong> The result is known only at the end of the game. Yet a loss punishes every earlier move. Working out which earlier moves caused the result is called <em>credit assignment</em>. It is the core problem of RL.</li>
-                    <li><strong>Exploration vs. exploitation.</strong> MENACE must try new moves to find good ones. It must also reuse moves it knows work. The bead draw balances both.</li>
-                    <li><strong>Dead ends.</strong> An empty matchbox forces MENACE to resign. The loss then punishes the path that led there. MENACE learns to avoid that path earlier.</li>
-                    <li><strong>No computer needed.</strong> MENACE was built from matchboxes in 1961. The learning rule is the idea, not the hardware.</li>
+                    <li><strong>It won:</strong> each move it played gets <strong>3 extra beads</strong>.</li>
+                    <li><strong>It drew:</strong> each move gets <strong>1 extra bead</strong>.</li>
+                    <li><strong>It lost:</strong> each move <strong>loses 1 bead</strong>.</li>
+                </ul>
+                <p>Moves that led to wins collect beads and get picked more often. Moves that led to losses lose beads and slowly disappear. That is all there is to it, and it is enough to learn the game.</p>
+
+                <div class="example">
+                    <strong>A small example.</strong> On an empty board, all four corners play the same way: they are mirror copies of each other. The same is true of the four edges. So MENACE's first box only needs <strong>three bead colours</strong>: one for "a corner", one for "an edge" and one for "the centre". It starts with 4 beads of each colour, <strong>12 beads in total</strong>. Each colour has 4 of the 12 beads, so each kind of move has a 1-in-3 chance. When a corner bead is drawn, MENACE plays one of the corners.
+                    <br><br>
+                    Now MENACE plays an edge and loses, so the edge colour drops to 3 beads. Next game it plays the centre and wins, so the centre colour goes up to 7 beads. The box now holds 4 + 3 + 7 = 14 beads. The centre has 7 of them, so MENACE now opens in the centre half the time.
+                </div>
+
+                <h3>What if a box runs out of beads?</h3>
+                <p>Then MENACE has no move it trusts there, so it <strong>gives up</strong>. That counts as a loss, so the moves that led into that position lose beads too. Over time MENACE learns to stay away from such positions.</p>
+
+                <h3>What you see on this page</h3>
+                <ul>
+                    <li><strong>MENACE Matchbox:</strong> the beads in the box MENACE just used, one row per possible move.</li>
+                    <li><strong>Matchbox report:</strong> after each game, every box MENACE used, with its beads before and after.</li>
+                    <li><strong>Learning Level:</strong> how much of MENACE's beads sit on the best moves. It also plays a test against a flawless player. Against a flawless player the best anyone can do is a draw, so a fully trained MENACE never loses.</li>
+                    <li><strong>Automated training:</strong> MENACE plays thousands of games against an opponent who moves at random. This is much faster than playing it yourself.</li>
                 </ul>
 
                 <h3>Things to try</h3>
@@ -433,19 +462,41 @@
                     <li>Reset MENACE and compare how fast it learns.</li>
                 </ol>
 
-                <h3>Why only 304 matchboxes?</h3>
-                <p>A standard game has 5,478 possible board positions. The original MENACE needed only 304 matchboxes to play. It used four shortcuts:</p>
+                <h3>Why does this matter?</h3>
+                <p>MENACE learns by <strong>trial and error with rewards</strong>. Computer scientists call this <strong>reinforcement learning</strong>. It is the same basic idea behind programs that taught themselves to beat world champions at chess and Go. Those programs use huge computers instead of matchboxes, but the principle is the same: try things, keep what works.</p>
+                <p>MENACE also shows a hard problem. The reward comes only at the end of the game, but every earlier move gets the credit or the blame. A good move in a lost game is punished too. Only over many games do the good moves come out on top.</p>
+
+                <details>
+                    <summary>For the curious: the technical words</summary>
+                    <table>
+                        <tr><th>Term</th><th>In MENACE</th></tr>
+                        <tr><td>Agent</td><td>MENACE (all the matchboxes together)</td></tr>
+                        <tr><td>State</td><td>One board position (one matchbox)</td></tr>
+                        <tr><td>Action</td><td>One move (one colour of bead)</td></tr>
+                        <tr><td>Policy</td><td>The bead counts. They set how likely each move is.</td></tr>
+                        <tr><td>Reward</td><td>+3 beads for a win, +1 for a draw, −1 for a loss</td></tr>
+                        <tr><td>Exploration</td><td>The random draw. MENACE still sometimes tries moves it is unsure about.</td></tr>
+                        <tr><td>Credit assignment</td><td>Deciding which earlier moves caused the result. MENACE simply rewards or punishes them all.</td></tr>
+                        <tr><td>Episode</td><td>One game</td></tr>
+                    </table>
+                </details>
+
+                <h3>Why only about 300 matchboxes?</h3>
+                <p>Tic-tac-toe has thousands of possible boards, but MENACE needs far fewer boxes:</p>
                 <ul>
-                    <li><strong>Symmetry.</strong> Turning or mirroring a board gives the same game. One matchbox covers all of these copies. This cuts the count by about 7 times.</li>
-                    <li><strong>MENACE always plays X, the first player.</strong> It needs boxes only for its own turns: 1, 3, 5 and 7. It never needs a box for the human's turns (2, 4, 6 and 8).</li>
-                    <li><strong>No box for the last square.</strong> On turn 9 only one square is empty. MENACE has no choice, so it needs no box.</li>
-                    <li><strong>No boxes for finished games.</strong> A board with a win or a draw is over. MENACE makes no move there.</li>
+                    <li><strong>Turned or flipped boards are the same game.</strong> A board turned on its side, or seen in a mirror, plays exactly the same. One box covers all these copies. For the same reason, moves that are mirror copies share one bead colour. The empty board only needs three: corner, edge and centre.</li>
+                    <li><strong>Only MENACE's own turns need boxes.</strong> It never chooses your moves.</li>
+                    <li><strong>No box for the last square.</strong> When only one square is left, there is no choice to make.</li>
                 </ul>
-                <p>The count works like this. Start with 2,423 positions where X is to move and the game is not over. Remove the 222 turn-9 positions: 2,201 remain. Merge symmetric copies: 304 remain.</p>
-                <p>This web version uses the same shortcuts. Turned and mirrored boards share one matchbox, and the forced last move uses no box.</p>
+                <p>Like Michie's machine, each box starts with 4 beads per move on MENACE's first turn, then 3, 2 and 1 on its later turns. Late moves have fewer beads, so they change faster.</p>
+
+                <details>
+                    <summary>For the curious: the exact count</summary>
+                    <p>There are 5,478 legal boards. Of these, 2,423 have X to move with the game still open. Removing the 222 boards where only one square is left gives 2,201. Merging turned and flipped copies gives <strong>304</strong>, exactly the number Michie used. When MENACE plays O instead, it needs 289 boxes.</p>
+                </details>
 
                 <h3>Limits</h3>
-                <p>Tic-Tac-Toe has only about 5,500 board positions. MENACE stores each one separately. Large problems need methods that <em>generalize</em>, such as neural networks, so that similar situations share what they learn. Real RL problems also have noisy and unknown rewards. MENACE is a simple, clear first step.</p>
+                <p>MENACE works because tic-tac-toe is small. A game like chess has far too many positions to give each one a box. Modern systems use <em>neural networks</em> instead. They learn from similar positions at once, so they do not need to see every position.</p>
 
                 <p>Read more: <a href="https://en.wikipedia.org/wiki/Matchbox_Educable_Noughts_and_Crosses_Engine" target="_blank" rel="noopener noreferrer">MENACE on Wikipedia</a> · Sutton &amp; Barto, <em>Reinforcement Learning: An Introduction</em> (free online).</p>
 
@@ -493,7 +544,7 @@
                 <div id="matchbox-display">
                     <!-- Move options will be populated here -->
                     <p>No game started yet.</p>
-                    <p class="bead-info" style="font-size: 0.8em; color: #555;">Starting bead count: 4 per move</p>
+                    <p class="bead-info" style="font-size: 0.8em; color: #555;">Starting beads per move: 4, 3, 2, 1 on MENACE's 1st to 4th turn</p>
                 </div>
 
                 <div id="learning-level">
@@ -524,17 +575,17 @@
         // 1. Constants, Initial State, Persistence Load/Save
         // =====================================================================
 
-        const STORAGE_KEY_MATCHBOX = 'menace_matchbox_v2'; // v2: symmetry-reduced matchboxes
+        const STORAGE_KEY_MATCHBOX = 'menace_matchbox_v3'; // v3: one bead type per distinct move, 4/3/2/1 start
         const STORAGE_KEY_STATS = 'menace_stats';
         
-        // Represents a single move (0-8) and its associated bead count
+        // Beads per move on MENACE's first turn; each later turn starts with one fewer
         const INITIAL_BEADS = 4;
 
         // Represents a single move (0-8) and its associated bead count
         class MatchboxEntry {
-            constructor(move) {
+            constructor(move, beads) {
                 this.move = move; // Index 0-8
-                this.beads = INITIAL_BEADS; // Start with a few beads per move
+                this.beads = beads;
             }
         }
 
@@ -547,9 +598,11 @@
             menaceWins: 0,
             humanWins: 0,
             draws: 0,
-            resignations: 0, // Games MENACE resigned because its matchbox was empty
-            gameHistory: [] // Stores outcomes: 1 (Menace Win), -1 (Human Win), 0 (Draw)
+            resignations: 0 // Games MENACE resigned because its matchbox was empty
         };
+
+        // Bumped to stop a running training loop
+        let trainingRunId = 0;
 
         // Game State
         let gameState = {
@@ -557,7 +610,6 @@
             currentPlayer: 'X', // X is always human's mark if human starts, O if MENACE starts
             isGameOver: false,
             isTraining: false,
-            trainingCounter: 0,
             humanMark: 'X',
             menaceMark: 'O',
             // The current board key for which MENACE might have stored choices
@@ -585,6 +637,8 @@
                 const savedStats = localStorage.getItem(STORAGE_KEY_STATS);
                 if (savedStats) {
                     GAME_STATS = JSON.parse(savedStats);
+                    // Older versions stored an unbounded per-game history
+                    delete GAME_STATS.gameHistory;
                 }
             } catch (e) {
                 console.error("Failed to load state from localStorage:", e);
@@ -611,8 +665,7 @@
                 menaceWins: 0,
                 humanWins: 0,
                 draws: 0,
-                resignations: 0,
-                gameHistory: []
+                resignations: 0
             };
             saveState();
             initializeGame();
@@ -750,13 +803,19 @@
             return MENACE_MATCHBOX[form.key];
         }
 
-        /** A new matchbox: 4 beads for each legal move, in canonical move numbers. */
+        /** A new matchbox: one entry per distinct legal move, in canonical move numbers. */
         function freshMatchbox(board, side) {
             const form = canonicalForm(board, side);
+            const canon = form.toReal.map(cell => board[cell]);
+            // Symmetries that leave the board unchanged make some moves equivalent
+            const stabilizer = SYMMETRIES.filter(m => m.every((src, j) => canon[src] === canon[j]));
+            const placed = board.filter(c => c !== null).length;
+            const beads = INITIAL_BEADS - Math.floor(placed / 2);
             const entries = [];
             for (let j = 0; j < 9; j++) {
-                if (isLegalMove(board, form.toReal[j])) {
-                    entries.push(new MatchboxEntry(j));
+                // Keep only the lowest-numbered move of each equivalent group
+                if (canon[j] === null && stabilizer.every(m => m[j] >= j)) {
+                    entries.push(new MatchboxEntry(j, beads));
                 }
             }
             return entries;
@@ -800,13 +859,13 @@
          * @returns {{before:number, after:number, applied:number}|null} Bead counts and applied change.
          */
         function reinforceMove(moveIndex, outcome, boardKey) {
-            if (!boardKey) return;
+            if (!boardKey) return null;
             const matchbox = MENACE_MATCHBOX[boardKey];
 
-            if (!matchbox) return; // Should not happen if logic is correct
+            if (!matchbox) return null; // Should not happen if logic is correct
 
             const entry = matchbox.find(e => e.move === moveIndex);
-            if (!entry) return;
+            if (!entry) return null;
 
             let reward = 0;
             if (outcome === 'win') {
@@ -926,18 +985,7 @@
                 reinforceMove(record.move, outcome, record.boardKey);
             }
 
-            // Update global statistics
-            GAME_STATS.totalGames++;
-            if (outcome === 'win') {
-                GAME_STATS.menaceWins++;
-                GAME_STATS.gameHistory.push(1);
-            } else if (outcome === 'loss') {
-                GAME_STATS.humanWins++;
-                GAME_STATS.gameHistory.push(-1);
-            } else {
-                GAME_STATS.draws++;
-                GAME_STATS.gameHistory.push(0);
-            }
+            recordResult(outcome);
 
             if (resigned) {
                 GAME_STATS.resignations++;
@@ -953,7 +1001,8 @@
             if (gameState.isTraining) return;
 
             gameState.isTraining = true;
-            gameState.trainingCounter = 0;
+            const runId = ++trainingRunId;
+            let played = 0;
             
             // Reset the board for training
             gameState.board = Array(9).fill(null);
@@ -967,40 +1016,32 @@
             const startingPlayer = gameState.menaceMark === 'X' ? 'menace' : 'opponent';
             
             let lastYield = performance.now();
-            while (gameState.trainingCounter < count) {
+            updateStatus(`Training MENACE (${gameState.menaceMark}) vs random opponent (${gameState.humanMark})...`, 'info');
+            while (played < count) {
                 // Stop cleanly if training was cancelled (e.g. via New Game)
-                if (!gameState.isTraining) break;
+                if (runId !== trainingRunId) break;
 
-                statusMessageElement.className = 'info';
-                statusMessageElement.textContent = `Training MENACE (${gameState.menaceMark}) vs random opponent (${gameState.humanMark}): Game ${gameState.trainingCounter + 1} of ${count}...`;
-                
                 // Execute one training game (always opened by X)
                 simulateTrainingGame(startingPlayer);
 
-                gameState.trainingCounter++;
+                played++;
                 
-                // Update visuals periodically to avoid UI freeze during heavy training
                 // Yield about every 50 ms of work so large runs stay responsive
-                if (performance.now() - lastYield > 50 || gameState.trainingCounter === count) {
-                    updateStatus(`Training MENACE (${gameState.menaceMark}) vs random opponent (${gameState.humanMark}): Game ${gameState.trainingCounter} of ${count}...`, 'info');
+                if (performance.now() - lastYield > 50 || played === count) {
+                    updateStatus(`Training MENACE (${gameState.menaceMark}) vs random opponent (${gameState.humanMark}): Game ${played} of ${count}...`, 'info');
+                    renderStats();
                     lastYield = performance.now();
                     await new Promise(resolve => setTimeout(resolve, 0)); // Yield to UI
                 }
             }
 
-            // Detect whether the loop was cancelled before it could finish.
-            const wasCancelled = !gameState.isTraining;
-            gameState.isTraining = false;
+            // Whoever cancelled (New Game, Reset) has saved and now owns the board and state.
+            if (runId !== trainingRunId) return;
 
-            // Persist beads learned so far, whether training completed or was stopped.
+            gameState.isTraining = false;
             saveState();
             refreshLearningLevel();
-
-            if (wasCancelled) {
-                // Training was stopped externally (e.g. New Game); the caller
-                // owns the board from here on, so leave it untouched.
-                return;
-            }
+            renderStats();
 
             statusMessageElement.className = 'win';
             statusMessageElement.textContent = `Training complete! MENACE has played ${count} games.`;
@@ -1081,6 +1122,8 @@
                 const entries = MENACE_MATCHBOX[key];
                 if (!entries || entries.length === 0) continue;
                 const [cells, side] = key.split('|');
+                // Measure only the side MENACE is currently playing
+                if (side !== gameState.menaceMark) continue;
                 const board = [...cells].map(c => (c === '-' ? null : c));
                 const beadTotal = entries.reduce((s, e) => s + e.beads, 0);
                 const values = entries.map(e => ({ beads: e.beads, value: moveValue(board, side, e.move) }));
@@ -1215,8 +1258,6 @@
         function handleKeydown(event) {
             if (gameState.isGameOver || gameState.currentPlayer !== gameState.humanMark) return;
             if (event.key === 'Enter' || event.key === ' ') {
-                const cell = event.currentTarget;
-                const index = parseInt(cell.dataset.index);
                 handleHumanMove(event);
             }
         }
@@ -1251,8 +1292,7 @@
                 const winnerMark = checkWinner(gameState.board);
                 const outcome = winnerMark === gameState.menaceMark ? 'win' : (winnerMark ? 'loss' : 'draw');
                 
-                // Record the manual game result so the counters include all games.
-                recordManualResult(outcome);
+                recordResult(outcome);
 
                 // 5. Reinforce ALL of MENACE's moves in this game (Human winning penalizes MENACE)
                 const changes = reinforceGame(outcome);
@@ -1321,8 +1361,7 @@
             }
 
             if (outcome) {
-                // Record the manual game result so the counters include all games.
-                recordManualResult(outcome);
+                recordResult(outcome);
 
                 // 7. Reinforce ALL of MENACE's moves in this game for any ending
                 const changes = reinforceGame(outcome);
@@ -1344,7 +1383,7 @@
          */
         function resignGame() {
             gameState.isGameOver = true;
-            recordManualResult('loss');
+            recordResult('loss');
             GAME_STATS.resignations++;
             const changes = reinforceGame('loss');
             renderBoard();
@@ -1353,22 +1392,23 @@
         }
 
         /**
-         * Records the result of a manually played game in the shared stats,
-         * so the counters include manual games too.
+         * Records the result of a manual or training game in the shared stats.
          * @param {'win'|'loss'|'draw'} outcome - Outcome from MENACE's perspective.
          */
-        function recordManualResult(outcome) {
+        function recordResult(outcome) {
             GAME_STATS.totalGames++;
             if (outcome === 'win') {
                 GAME_STATS.menaceWins++;
-                GAME_STATS.gameHistory.push(1);
             } else if (outcome === 'loss') {
                 GAME_STATS.humanWins++;
-                GAME_STATS.gameHistory.push(-1);
             } else {
                 GAME_STATS.draws++;
-                GAME_STATS.gameHistory.push(0);
             }
+        }
+
+        function renderStats() {
+            const s = GAME_STATS;
+            statsElement.textContent = `All games: ${s.totalGames} · MENACE wins ${s.menaceWins} · draws ${s.draws} · MENACE losses ${s.humanWins} (${s.resignations || 0} by resigning)`;
         }
 
         /**
@@ -1417,6 +1457,7 @@
 
             updateStatus(message, className);
             refreshLearningLevel();
+            renderStats();
             
             renderReinforcementReport(outcome, changes, resigned);
         }
@@ -1530,7 +1571,7 @@
             gameState.gameMoveHistory = [];
             gameState.currentBoardKey = null;
             gameState.isTraining = false;
-            gameState.trainingCounter = 0;
+            trainingRunId++;
 
             // 3. X always starts a standard game of tic-tac-toe.
             // If MENACE is X, it gets the first move automatically.
@@ -1541,6 +1582,7 @@
 
             // Show how close MENACE is to optimal play
             refreshLearningLevel();
+            renderStats();
 
             renderBoard();
             updateMatchboxDisplay(gameState.board, gameState.menaceMark);
@@ -1580,10 +1622,15 @@
             // Prevent a second concurrent training loop
             if (gameState.isTraining) return;
 
-            // Get value from the games-to-train slider
-            const count = parseInt(trainingSpeedInput.value);
-            if (isNaN(count) || count < 1 || count > 1000000) {
-                alert("Please choose between 1 and 1,000,000 games.");
+            const count = Number(trainingSpeedInput.value);
+            if (!Number.isInteger(count) || count < 1 || count > 1000000) {
+                alert("Please choose a whole number between 1 and 1,000,000 games.");
+                return;
+            }
+
+            // Training replaces the board, so an unfinished game is dropped without reinforcement
+            const isManualGameInProgress = !gameState.isGameOver && gameState.board.some(c => c !== null);
+            if (isManualGameInProgress && !confirm("Training will abandon the current game (it will not count or teach MENACE). Continue?")) {
                 return;
             }
             await startTraining(count);
