@@ -213,32 +213,6 @@
             padding-top: 15px;
             border-top: 1px solid #ccc;
         }
-        #bead-chart {
-            height: 100px;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: flex-end;
-        }
-        .bar-container {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
-            align-items: center;
-            height: 100%;
-        }
-        .bar {
-            width: 80%;
-            background-color: var(--bead-color-o);
-            transition: height 0.5s ease;
-            border-radius: 3px 3px 0 0;
-        }
-        .bar-label {
-            font-size: 0.75em;
-            color: #555;
-            margin-top: 4px;
-            text-align: center;
-        }
         #win-rate-chart {
             width: 100%;
             height: 50px;
@@ -422,11 +396,6 @@
                 </div>
 
                 <div id="visuals-container">
-                    <h3>Learning Insights</h3>
-                    <p>Bead distribution per move:</p>
-                    <div id="bead-chart">
-                        <!-- Bars populated here -->
-                    </div>
                     <p id="win-rate-label">Win rate over time (All games):</p>
                     <canvas id="win-rate-chart"></canvas>
                 </div>
@@ -501,7 +470,6 @@
         const boardElement = document.getElementById('board');
         const statusMessageElement = document.getElementById('status-message');
         const matchboxDisplayElement = document.getElementById('matchbox-display');
-        const beadChartElement = document.getElementById('bead-chart');
         const winRateChartElement = document.getElementById('win-rate-chart');
         const statsElement = document.getElementById('session-stats');
         const reportElement = document.getElementById('reinforcement-report');
@@ -1403,34 +1371,6 @@
         }
 
         function updateVisuals() {
-            // --- Bead Count Chart (with move labels and dynamic widths) ---
-            beadChartElement.innerHTML = '';
-            const matchbox = MENACE_MATCHBOX[getBoardKey(gameState.board, gameState.menaceMark)] || [];
-            
-            // Re-calculate the overall max beads if needed, but for simplicity, use a sensible max
-            const maxBeads = Math.max(...matchbox.map(e => e.beads), 1); 
-
-            matchbox.forEach(entry => {
-                const barContainer = document.createElement('div');
-                barContainer.className = 'bar-container';
-                
-                const bar = document.createElement('div');
-                const percentage = (entry.beads / maxBeads) * 100;
-                bar.className = 'bar';
-                bar.style.height = `${percentage}%`;
-                
-                const label = document.createElement('div');
-                label.className = 'bar-label';
-                // Convert 0-8 index to row/column representation for readability
-                const row = Math.floor(entry.move / 3) + 1;
-                const col = (entry.move % 3) + 1;
-                label.textContent = `${row},${col}`;
-                
-                barContainer.appendChild(bar);
-                barContainer.appendChild(label);
-                beadChartElement.appendChild(barContainer);
-            });
-            
             // --- Win Rate Chart (Canvas) ---
             const history = GAME_STATS.gameHistory;
             const numSamples = history.length;
