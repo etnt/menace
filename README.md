@@ -42,7 +42,8 @@ close the page.
 
 No install is needed. Open `index.html` in a web browser.
 
-The page is also published with GitHub Pages. See the workflow in
+You can also play it online at **https://etnt.github.io/menace/**.
+The site is published with GitHub Pages. See the workflow in
 `.github/workflows/deploy-pages.yml`.
 
 ## Files
