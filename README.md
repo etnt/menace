@@ -37,7 +37,8 @@ Over many games, MENACE learns to avoid bad moves and prefer good ones.
 
 - **Play** against MENACE. Choose whether you use X or O.
 - **Train** MENACE automatically. Run up to 1,000,000 games against a
-  random opponent.
+  random opponent. Tick **Train with GRPO** to use a modern group-relative
+  method instead of MENACE's own rule, and compare how fast each learns.
 - **See what MENACE learned.** The matchbox view shows the beads for each
   move. A report after each game shows how the used matchboxes changed.
 - **Check its skill.** The Learning Level panel shows how close MENACE

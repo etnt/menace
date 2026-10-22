@@ -319,6 +319,11 @@
             padding: 4px 8px;
             font-size: 0.85em;
         }
+        .grpo-toggle {
+            white-space: nowrap;
+            margin: 0 6px;
+            cursor: pointer;
+        }
 
         /* Footer */
         .site-footer {
@@ -505,6 +510,22 @@
                     <p>There are 5,478 legal boards. Of these, 2,423 have X to move with the game still open. Removing the 222 boards where only one square is left gives 2,201. Merging turned and flipped copies gives <strong>304</strong>, exactly the number Michie used. When MENACE plays O instead, it needs 289 boxes.</p>
                 </details>
 
+                <h3>A modern twist: GRPO</h3>
+                <p>Large AI language models are trained with a newer method called <strong>GRPO</strong> (Group Relative Policy Optimization). You can switch it on with the <em>Train with GRPO</em> box next to the training button.</p>
+                <p>Imagine Michie had 8 copies of MENACE, all with the same beads. Each copy plays one game from the same start. Then he compares the results:</p>
+                <ul>
+                    <li>Games that did <strong>better than the group average</strong> get beads added to their moves.</li>
+                    <li>Games that did <strong>worse than average</strong> lose beads.</li>
+                    <li>If all 8 games ended the same way, there is nothing to learn from the comparison, so <strong>nothing changes</strong>.</li>
+                </ul>
+                <p>The big difference: MENACE's own rule always rewards a draw. GRPO rewards a draw only if the other games in the group did worse. A single loss among wins is punished hard, because it stands out from the group.</p>
+                <p><strong>Try it:</strong> reset MENACE, train 1,000 games with the normal rule and note the Learning Level. Then reset, tick <em>Train with GRPO</em>, train 1,000 games again and compare.</p>
+                <p><strong>Don't expect GRPO to win here.</strong> In tests, MENACE's own rule usually learns as fast or faster. GRPO's strength is that it needs no separate "judge" model to score answers, which matters for huge language models. MENACE never needed a judge either. And against a random opponent most games are wins, so many groups of 8 all end the same way and teach nothing. GRPO also rewards a draw only when the rest of the group did worse, but against a perfect player a draw is the best result possible.</p>
+                <details>
+                    <summary>For the curious: how this GRPO version works</summary>
+                    <p>Each group plays 8 games with the beads frozen. In each group the games start from the same position, which acts as the "prompt". A game scores +1 for a win, 0 for a draw and −1 for a loss. Each game's <em>advantage</em> is its score minus the group mean, divided by the group's standard deviation. Every MENACE move in that game then changes by 2 × advantage beads (rounded at random to whole beads). A move never drops below 1 bead: in real GRPO a move can become very unlikely but never impossible, and without this floor whole boxes empty out and MENACE keeps resigning. Full GRPO for language models also limits how far one update may move the policy (clipping) and keeps it close to a reference model (a KL penalty). This toy version leaves those out.</p>
+                </details>
+
                 <h3>Limits</h3>
                 <p>MENACE works because tic-tac-toe is small. A game like chess has far too many positions to give each one a box. Modern systems use <em>neural networks</em> instead. They learn from similar positions at once, so they do not need to see every position.</p>
 
@@ -531,6 +552,9 @@
                 <button type="button" class="preset" data-games="100000">100,000</button>
             </span>
             <button id="start-training">Start Automated Training</button>
+            <label class="grpo-toggle" title="Play groups of 8 games from the same opening, then reward each game relative to the group average">
+                <input type="checkbox" id="use-grpo"> Train with GRPO
+            </label>
             <button id="reset-experience">Reset MENACE's Experience (Erase Memory)</button>
             <button id="reset-game">New Game</button>
         </div>
@@ -917,90 +941,127 @@
         // =====================================================================
 
         /**
-         * Simulates a full training game between MENACE and a random opponent.
-         * This is used for automated training sessions. It runs to completion without
-         * waiting for user input.
-         * @param {'menace'|'opponent'} startingPlayer - Who starts the simulated game.
-         *   Callers must always pass the X side (menace if MENACE is X, otherwise
-         *   opponent), matching manual play where X always moves first.
-         * @returns {object} { outcome: 'win'|'loss'|'draw', winnerMark: 'X'|'O'|null }
+         * Plays one game between MENACE and a random opponent without changing any beads.
+         * @param {'menace'|'opponent'} startingPlayer - The X side, who moves first in a game.
+         * @param {Array<string|null>} [opening] - Position to start from (default: empty board).
+         * @returns {{outcome:'win'|'loss'|'draw', resigned:boolean, history:Array<{move:number, boardKey:string}>}}
          */
-        function simulateTrainingGame(startingPlayer) {
-            // Local training state to avoid corrupting the main gameState for the user
-            const board = Array(9).fill(null);
-            let currentTurn = startingPlayer;
+        function playTrainingGame(startingPlayer, opening = Array(9).fill(null)) {
+            const board = opening.slice();
+            const placed = board.filter(c => c !== null).length;
+            let currentTurn = (placed % 2 === 0) === (startingPlayer === 'menace') ? 'menace' : 'opponent';
             let winnerMark = null;
-            let isDraw = false;
             let resigned = false;
-            const menaceHistory = []; // Stores { moveIndex, boardBeforeMove }
+            const history = [];
 
             // Use the same marks as the current game setup, so training
             // populates the matchbox keys MENACE actually uses when playing.
             const MENACE_MARK = gameState.menaceMark;
             const OPPONENT_MARK = gameState.humanMark;
 
-            // Alternates turns until the game ends.
             while (true) {
                 let moveIndex;
 
                 if (currentTurn === 'menace') {
                     const choice = menaceChoice(board, MENACE_MARK);
                     if (choice === null) {
-                        // Empty matchbox: MENACE resigns, so the human wins
+                        // Empty matchbox: MENACE resigns, so the opponent wins
                         resigned = true;
                         winnerMark = OPPONENT_MARK;
                         break;
                     }
                     moveIndex = choice.cell;
-                    // Record the move for later reinforcement (forced moves have no matchbox)
+                    // Forced moves have no matchbox, so there is nothing to reinforce
                     if (choice.key) {
-                        menaceHistory.push({ move: choice.move, boardKey: choice.key });
+                        history.push({ move: choice.move, boardKey: choice.key });
                     }
                 } else {
-                    // Random opponent makes a random legal move
                     moveIndex = randomOpponentMove(board);
                 }
 
-                // Apply the move
-                const mark = currentTurn === 'menace' ? MENACE_MARK : OPPONENT_MARK;
-                board[moveIndex] = mark;
+                board[moveIndex] = currentTurn === 'menace' ? MENACE_MARK : OPPONENT_MARK;
 
-                // Check if game ended
                 const winner = checkWinner(board);
                 if (winner) {
                     winnerMark = winner;
                     break;
                 }
-                if (!board.includes(null)) {
-                    isDraw = true;
-                    break;
-                }
+                if (!board.includes(null)) break;
 
-                // Switch turns
                 currentTurn = currentTurn === 'menace' ? 'opponent' : 'menace';
             }
 
-            // Determine the outcome from MENACE's perspective
-            let outcome;
-            if (winnerMark === MENACE_MARK) {
-                outcome = 'win';
-            } else if (winnerMark === OPPONENT_MARK) {
-                outcome = 'loss';
-            } else {
-                outcome = 'draw';
+            const outcome = winnerMark === MENACE_MARK ? 'win' : (winnerMark === OPPONENT_MARK ? 'loss' : 'draw');
+            return { outcome, resigned, history };
+        }
+
+        function recordTrainingResult(game) {
+            recordResult(game.outcome);
+            if (game.resigned) GAME_STATS.resignations++;
+        }
+
+        /**
+         * Plays one training game and applies MENACE's own rule (+3 / +1 / −1 beads).
+         * @param {'menace'|'opponent'} startingPlayer - The X side, who moves first.
+         */
+        function simulateTrainingGame(startingPlayer) {
+            const game = playTrainingGame(startingPlayer);
+            for (const record of game.history) {
+                reinforceMove(record.move, game.outcome, record.boardKey);
+            }
+            recordTrainingResult(game);
+            return game;
+        }
+
+        // GRPO settings: games per group, reward per outcome, and beads per unit of advantage
+        const GRPO_GROUP_SIZE = 8;
+        const GRPO_REWARD = { win: 1, draw: 0, loss: -1 };
+        const GRPO_STEP = 2;
+
+        /**
+         * GRPO-style training: plays a group of games from the same opening with the
+         * beads frozen, then scores each game against the group average. Moves in
+         * better-than-average games gain beads, the rest lose beads.
+         * @param {'menace'|'opponent'} startingPlayer - The X side, who moves first.
+         * @param {number} size - Number of games in the group.
+         */
+        function simulateGrpoGroup(startingPlayer, size) {
+            // The shared opening plays the role of the prompt in GRPO
+            const opening = Array(9).fill(null);
+            if (startingPlayer === 'opponent') {
+                opening[randomOpponentMove(opening)] = gameState.humanMark;
             }
 
-            // Apply reinforcement to ALL of MENACE's moves in this game
-            for (const record of menaceHistory) {
-                reinforceMove(record.move, outcome, record.boardKey);
+            const games = [];
+            for (let i = 0; i < size; i++) {
+                games.push(playTrainingGame(startingPlayer, opening));
             }
 
-            recordResult(outcome);
+            const rewards = games.map(g => GRPO_REWARD[g.outcome]);
+            const mean = rewards.reduce((s, r) => s + r, 0) / size;
+            const std = Math.sqrt(rewards.reduce((s, r) => s + (r - mean) ** 2, 0) / size);
 
-            if (resigned) {
-                GAME_STATS.resignations++;
+            // If every game had the same result, there is nothing to compare, so nothing changes
+            if (std > 0) {
+                games.forEach((game, i) => {
+                    const advantage = (rewards[i] - mean) / std;
+                    for (const record of game.history) {
+                        nudgeBeads(record.boardKey, record.move, GRPO_STEP * advantage);
+                    }
+                });
             }
-            return { outcome, winnerMark, resigned };
+
+            games.forEach(recordTrainingResult);
+        }
+
+        /** Adds a possibly fractional number of beads to one move, keeping at least one bead. */
+        function nudgeBeads(boardKey, move, delta) {
+            const entry = (MENACE_MATCHBOX[boardKey] || []).find(e => e.move === move);
+            if (!entry) return;
+            // Random rounding keeps whole beads while the average change stays exact
+            const whole = Math.floor(delta) + (Math.random() < delta - Math.floor(delta) ? 1 : 0);
+            // Like GRPO's softmax policy, a move can become rare but never impossible
+            entry.beads = Math.max(1, entry.beads + whole);
         }
         
         /**
@@ -1024,21 +1085,27 @@
             // where X always moves first. This keeps training games within
             // the same board positions manual play can reach.
             const startingPlayer = gameState.menaceMark === 'X' ? 'menace' : 'opponent';
+            const useGrpo = document.getElementById('use-grpo').checked;
+            const method = useGrpo ? 'GRPO' : 'MENACE rule';
             
             let lastYield = performance.now();
-            updateStatus(`Training MENACE (${gameState.menaceMark}) vs random opponent (${gameState.humanMark})...`, 'info');
+            updateStatus(`Training MENACE (${gameState.menaceMark}, ${method}) vs random opponent (${gameState.humanMark})...`, 'info');
             while (played < count) {
                 // Stop cleanly if training was cancelled (e.g. via New Game)
                 if (runId !== trainingRunId) break;
 
-                // Execute one training game (always opened by X)
-                simulateTrainingGame(startingPlayer);
-
-                played++;
+                if (useGrpo) {
+                    const size = Math.min(GRPO_GROUP_SIZE, count - played);
+                    simulateGrpoGroup(startingPlayer, size);
+                    played += size;
+                } else {
+                    simulateTrainingGame(startingPlayer);
+                    played++;
+                }
                 
                 // Yield about every 50 ms of work so large runs stay responsive
                 if (performance.now() - lastYield > 50 || played === count) {
-                    updateStatus(`Training MENACE (${gameState.menaceMark}) vs random opponent (${gameState.humanMark}): Game ${played} of ${count}...`, 'info');
+                    updateStatus(`Training MENACE (${gameState.menaceMark}, ${method}) vs random opponent (${gameState.humanMark}): Game ${played} of ${count}...`, 'info');
                     renderStats();
                     lastYield = performance.now();
                     await new Promise(resolve => setTimeout(resolve, 0)); // Yield to UI
