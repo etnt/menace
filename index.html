@@ -1,0 +1,1574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MENACE Learning Experiment</title>
+    <style>
+        /* 
+         * CSS Polish
+         * Follows the theme: Matchbox and bead theme, warm paper palette, rounded cards.
+         * Includes responsive layout and accessibility considerations.
+         */
+        :root {
+            --paper-bg: #f7f3e8; /* Warm paper palette */
+            --board-color: #e5d8b7; /* Slightly darker paper for board */
+            --bead-color-x: #c9302c; /* Distinct shape/color for X */
+            --bead-color-o: #007bff; /* Distinct shape/color for O */
+            --matchbox-bg: #ffebd5; /* Light, warm matchbox color */
+            --border-color: #a08e7a;
+            --shadow-light: rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--paper-bg);
+            color: #333;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        #app-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        header {
+            text-align: center;
+            padding: 20px 0;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            color: var(--border-color);
+            margin-bottom: 10px;
+        }
+
+        /* Main Game Area Layout */
+        #game-area {
+            display: flex;
+            flex-direction: row;
+            gap: 30px;
+            flex-wrap: wrap; /* For mobile responsiveness */
+        }
+
+        #board-container, #matchbox-container {
+            background: #fff;
+            position: relative; /* Needed for reliable .speech-bubble positioning */
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 6px 12px var(--shadow-light);
+            transition: transform 0.3s ease;
+            flex: 1 1 450px; /* Allows flex growth but sets minimum size */
+            min-width: 300px;
+        }
+
+        /* Board Styling */
+        #board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            width: 100%;
+            aspect-ratio: 1 / 1; /* Ensure square */
+            border: 5px solid var(--border-color);
+            background-color: var(--board-color);
+            border-radius: 8px;
+        }
+
+        .cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4em;
+            cursor: pointer;
+            border: 2px solid rgba(0, 0, 0, 0.1);
+            transition: background-color 0.15s ease, transform 0.1s ease;
+        }
+
+        .cell:hover:not(.occupied) {
+            background-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .cell.occupied {
+            cursor: default;
+        }
+
+        /* X and O Shapes/Styling (Distinct shapes) */
+        .cell[data-value="X"] {
+            color: var(--bead-color-x);
+            /* Simple 'X' shape via CSS transform/content if possible, or just bold large text */
+        }
+        .cell[data-value="O"] {
+            color: var(--bead-color-o);
+            /* Circle simulation using large font size and border-radius on content */
+            font-style: italic;
+        }
+
+        /* Bead Pop Animation (Respects reduced motion) */
+        @media (prefers-reduced-motion: reduce) {
+            .bead-pop {
+                opacity: 1 !important;
+                transform: scale(1) !important;
+                transition: none !important;
+            }
+        }
+        .bead-pop {
+            animation: pop 0.2s ease-out;
+        }
+
+        @keyframes pop {
+            0% { transform: scale(0.5); opacity: 0; }
+            80% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); }
+        }
+
+        /* Matchbox Styling */
+        #matchbox-display {
+            border-top: 2px solid var(--border-color);
+            padding-top: 15px;
+        }
+
+        .move-option {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px dashed #ccc;
+        }
+
+        .move-option span:first-child {
+            font-weight: bold;
+        }
+
+        .bead-count {
+            font-weight: bold;
+            color: var(--border-color);
+            min-width: 30px;
+            text-align: right;
+        }
+
+        .move-option.selected {
+            background-color: #fffbe5; /* Highlight selected move */
+            border-radius: 4px;
+            padding: 8px;
+        }
+
+        /* Controls and Status */
+        #controls {
+            text-align: center;
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f0f0f0;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px var(--shadow-light);
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            background-color: var(--board-color);
+            transition: background-color 0.2s;
+            font-weight: bold;
+        }
+
+        button:hover:not(:disabled) {
+            background-color: #d5cba5;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Status and Feedback */
+        #status-message {
+            font-size: 1.4em;
+            margin-top: 15px;
+            padding: 10px;
+            text-align: center;
+            min-height: 40px;
+            border-radius: 8px;
+        }
+
+        .win { background-color: #d4edda; color: #155724; }
+        .loss { background-color: #f8d7da; color: #721c24; }
+        .draw { background-color: #fff3cd; color: #856404; }
+        .info { background-color: #e9ecef; color: #333; }
+
+        /* Learning Visuals */
+        #visuals-container {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #ccc;
+        }
+        #bead-chart {
+            height: 100px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: flex-end;
+        }
+        .bar-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            height: 100%;
+        }
+        .bar {
+            width: 80%;
+            background-color: var(--bead-color-o);
+            transition: height 0.5s ease;
+            border-radius: 3px 3px 0 0;
+        }
+        .bar-label {
+            font-size: 0.75em;
+            color: #555;
+            margin-top: 4px;
+            text-align: center;
+        }
+        #win-rate-chart {
+            width: 100%;
+            height: 50px;
+            border: 1px solid #ccc;
+            margin-top: 10px;
+            border-radius: 5px;
+        }
+
+        /* Reinforcement report: shows how each matchbox used in the game changed */
+        #reinforcement-report {
+            background: #fffdf5;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 15px;
+            box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.1);
+        }
+        #reinforcement-report h3 {
+            margin: 0 0 6px;
+        }
+        .report-headline {
+            font-size: 0.95em;
+            margin: 0 0 10px;
+        }
+        .report-cards {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .report-card {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 6px 8px;
+        }
+        .mini-board {
+            display: grid;
+            grid-template-columns: repeat(3, 22px);
+            gap: 2px;
+        }
+        .mini-cell {
+            width: 22px;
+            height: 22px;
+            border-radius: 3px;
+            background: #f4efe2;
+            font-size: 12px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .mini-cell.picked {
+            outline: 2px solid #f39c12;
+            background: #ffe9a8;
+        }
+        .bead-change {
+            font-weight: bold;
+        }
+        .bead-change.gain { color: #2e8b57; }
+        .bead-change.drop { color: #c0392b; }
+        .bead-change.flat { color: #777; }
+        .report-note {
+            font-size: 0.8em;
+            color: #555;
+            margin: 8px 0 0;
+        }
+
+        /* Learning level panel */
+        #learning-level {
+            background: #f7fbff;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            padding: 12px;
+            margin: 15px 0;
+        }
+        #learning-level h3 {
+            margin: 0 0 6px;
+        }
+        .level-badge {
+            font-size: 1.4em;
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+        .level-meter {
+            height: 18px;
+            background: #e6e6e6;
+            border-radius: 9px;
+            overflow: hidden;
+        }
+        #level-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #f39c12, #2e8b57);
+            transition: width 0.6s ease;
+        }
+        .level-stats {
+            list-style: none;
+            padding: 0;
+            margin: 10px 0;
+            font-size: 0.9em;
+        }
+        .level-stats li {
+            margin: 4px 0;
+        }
+        .hint {
+            color: #666;
+            font-size: 0.85em;
+        }
+        .preset-group {
+            display: inline-flex;
+            gap: 4px;
+            margin-left: 6px;
+        }
+        .preset-group button {
+            padding: 4px 8px;
+            font-size: 0.85em;
+        }
+
+        /* Mobile adjustments */
+        @media (max-width: 900px) {
+            #game-area {
+                flex-direction: column;
+            }
+            #board-container, #matchbox-container {
+                flex: 1 1 100%;
+                min-width: unset;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app-container">
+        <header>
+            <h1>🧠 <a href="https://en.wikipedia.org/wiki/Matchbox_Educable_Noughts_and_Crosses_Engine" target="_blank" rel="noopener noreferrer">MENACE</a>: A Reinforcement Learning Experiment</h1>
+            <p>Play Tic-Tac-Toe against MENACE and watch its matchbox change with experience.</p>
+        </header>
+
+        <div id="controls">
+            <label for="player-mark">Your Mark:</label>
+            <select id="player-mark">
+                <option value="X">X (Human first)</option>
+                <option value="O">O (MENACE first)</option>
+            </select>
+            <label for="training-games">Games to train:</label>
+            <input type="number" id="training-games" min="1" max="1000000" step="1" value="10">
+            <span class="preset-group">
+                <button type="button" class="preset" data-games="100">100</button>
+                <button type="button" class="preset" data-games="1000">1,000</button>
+                <button type="button" class="preset" data-games="10000">10,000</button>
+                <button type="button" class="preset" data-games="100000">100,000</button>
+            </span>
+            <button id="start-training">Start Automated Training</button>
+            <button id="reset-experience">Reset MENACE's Experience (Erase Memory)</button>
+            <button id="reset-game">New Game</button>
+        </div>
+
+        <div id="status-message" class="info" aria-live="polite">Welcome! Choose your player mark and click New Game.</div>
+
+        <div id="game-area">
+            
+            <!-- Board Container -->
+            <div id="board-container">
+                <h2>Game Board</h2>
+                <div id="board">
+                    <!-- Cells will be generated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Matchbox & Learning Visuals Container -->
+            <div id="matchbox-container">
+                <h2>MENACE Matchbox</h2>
+                <div id="reinforcement-report" style="display:none;"></div>
+                <div id="matchbox-display">
+                    <!-- Move options will be populated here -->
+                    <p>No game started yet.</p>
+                    <p class="bead-info" style="font-size: 0.8em; color: #555;">Starting bead count: 4 per move</p>
+                </div>
+
+                <div id="visuals-container">
+                    <h3>Learning Insights</h3>
+                    <p>Bead distribution per move:</p>
+                    <div id="bead-chart">
+                        <!-- Bars populated here -->
+                    </div>
+                    <p id="win-rate-label">Win rate over time (All games):</p>
+                    <canvas id="win-rate-chart"></canvas>
+                </div>
+
+                <div id="learning-level">
+                    <h3>Learning Level</h3>
+                    <div id="level-badge" class="level-badge">Not measured yet</div>
+                    <div class="level-meter"><div id="level-fill"></div></div>
+                    <ul class="level-stats">
+                        <li>Optimal moves: <strong id="optimal-share">–</strong> <span class="hint">(share of bead weight on moves that keep the best possible result, over the positions MENACE has learned)</span></li>
+                        <li>Perfect-play test: <strong id="perfect-test">–</strong> <span class="hint">(200 games vs. a perfect opponent, no learning; a perfect MENACE never loses)</span></li>
+                    </ul>
+                    <button id="evaluate-level">Re-test MENACE</button>
+                </div>
+
+                <div id="session-stats" style="margin-top: 20px; font-size: 0.9em;">
+                    <!-- Stats populated here -->
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // =====================================================================
+        // 1. Constants, Initial State, Persistence Load/Save
+        // =====================================================================
+
+        const STORAGE_KEY_MATCHBOX = 'menace_matchbox';
+        const STORAGE_KEY_STATS = 'menace_stats';
+        
+        // Represents a single move (0-8) and its associated bead count
+        const INITIAL_BEADS = 4;
+
+        // Represents a single move (0-8) and its associated bead count
+        class MatchboxEntry {
+            constructor(move) {
+                this.move = move; // Index 0-8
+                this.beads = INITIAL_BEADS; // Start with a few beads per move
+            }
+        }
+
+        // Full MENACE state: Map<BoardKey, Array<MatchboxEntry>>
+        let MENACE_MATCHBOX = {}; 
+
+        // Session stats
+        let GAME_STATS = {
+            totalGames: 0,
+            menaceWins: 0,
+            humanWins: 0,
+            draws: 0,
+            resignations: 0, // Games MENACE resigned because its matchbox was empty
+            gameHistory: [] // Stores outcomes: 1 (Menace Win), -1 (Human Win), 0 (Draw)
+        };
+
+        // Game State
+        let gameState = {
+            board: Array(9).fill(null), // null, 'X', 'O'
+            currentPlayer: 'X', // X is always human's mark if human starts, O if MENACE starts
+            isGameOver: false,
+            isTraining: false,
+            trainingCounter: 0,
+            humanMark: 'X',
+            menaceMark: 'O',
+            // The current board key for which MENACE might have stored choices
+            currentBoardKey: null, 
+            // Current game's move history (for reinforcement)
+            gameMoveHistory: [] 
+        };
+
+        // DOM elements
+        const boardElement = document.getElementById('board');
+        const statusMessageElement = document.getElementById('status-message');
+        const matchboxDisplayElement = document.getElementById('matchbox-display');
+        const beadChartElement = document.getElementById('bead-chart');
+        const winRateChartElement = document.getElementById('win-rate-chart');
+        const statsElement = document.getElementById('session-stats');
+        const reportElement = document.getElementById('reinforcement-report');
+
+        // --- Persistence Functions ---
+
+        function loadState() {
+            try {
+                const savedMatchbox = localStorage.getItem(STORAGE_KEY_MATCHBOX);
+                if (savedMatchbox) {
+                    MENACE_MATCHBOX = JSON.parse(savedMatchbox);
+                }
+                
+                const savedStats = localStorage.getItem(STORAGE_KEY_STATS);
+                if (savedStats) {
+                    GAME_STATS = JSON.parse(savedStats);
+                }
+            } catch (e) {
+                console.error("Failed to load state from localStorage:", e);
+                // State remains default if loading fails
+            }
+        }
+
+        function saveState() {
+            try {
+                localStorage.setItem(STORAGE_KEY_MATCHBOX, JSON.stringify(MENACE_MATCHBOX));
+                localStorage.setItem(STORAGE_KEY_STATS, JSON.stringify(GAME_STATS));
+            } catch (e) {
+                console.error("Failed to save state to localStorage:", e);
+            }
+        }
+
+        function resetState() {
+            if (!confirm("Are you sure you want to reset MENACE's entire learned experience? This cannot be undone.")) {
+                return;
+            }
+            MENACE_MATCHBOX = {};
+            GAME_STATS = {
+                totalGames: 0,
+                menaceWins: 0,
+                humanWins: 0,
+                draws: 0,
+                resignations: 0,
+                gameHistory: []
+            };
+            saveState();
+            initializeGame();
+        }
+
+
+        // =====================================================================
+        // 2. Pure Game Rules: Legal Moves, Win/Draw Detection, State Key
+        // =====================================================================
+
+        /**
+         * Generates a unique, canonical key for the current board state,
+         * crucial for matchbox lookups. Uses an explicit encoding where
+         * empty cells are '-' (instead of ''), and includes the side to
+         * move so the same cell layout on different turns cannot collide.
+         * @returns {string}
+         */
+        function getBoardKey(board, side) {
+            const cells = board.map(c => c === null ? '-' : c).join('');
+            return `${cells}|${side}`;
+        }
+
+        /**
+         * Checks if a move (index) is legal.
+         * @param {Array<string|null>} board - The current board state.
+         * @param {number} index - The cell index (0-8).
+         * @returns {boolean}
+         */
+        function isLegalMove(board, index) {
+            return board[index] === null;
+        }
+
+        /**
+         * Checks if the current board state is a win state.
+         * @param {Array<string|null>} board - The current board state.
+         * @returns {string|null} - Returns 'X' or 'O' if a win occurred, or null.
+         */
+        function checkWinner(board) {
+            const lines = [
+                [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
+                [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
+                [0, 4, 8], [2, 4, 6]             // Diagonals
+            ];
+
+            for (const line of lines) {
+                const [a, b, c] = line;
+                if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+                    return board[a]; // Returns 'X' or 'O'
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Checks if the game has ended (Win or Draw).
+         * @param {Array<string|null>} board - The current board state.
+         * @returns {string|null} - Returns 'win', 'draw', or null if ongoing.
+         */
+        function checkGameEnd(board) {
+            const winner = checkWinner(board);
+            if (winner) {
+                return 'win';
+            }
+            if (!board.includes(null)) {
+                return 'draw';
+            }
+            return null;
+        }
+
+        // =====================================================================
+        // 3. MENACE: Weighted Choice, Move History, Reinforcement
+        // =====================================================================
+
+        /**
+         * Retrieves or generates the matchbox for a given board state.
+         * @param {Array<string|null>} board - The board state.
+         * @returns {Array<MatchboxEntry>} - The matchbox for this state.
+         */
+        function getMatchbox(board, side) {
+            const key = getBoardKey(board, side);
+            if (!MENACE_MATCHBOX[key]) {
+                // Initialize all legal moves with 0 beads
+                const moves = [];
+                for (let i = 0; i < 9; i++) {
+                    if (isLegalMove(board, i)) {
+                        moves.push(new MatchboxEntry(i));
+                    }
+                }
+                MENACE_MATCHBOX[key] = moves;
+            }
+            return MENACE_MATCHBOX[key];
+        }
+
+        /**
+         * Selects a move using weighted random sampling.
+         * If the matchbox is empty (no beads left), returns null: MENACE must resign.
+         * @param {Array<MatchboxEntry>} matchbox - The available moves and beads.
+         * @returns {number|null} - The chosen move index (0-8), or null if empty.
+         */
+        function selectMove(matchbox) {
+            const totalBeads = matchbox.reduce((sum, entry) => sum + entry.beads, 0);
+
+            if (totalBeads === 0) {
+                // Resignation protocol: no beads left for this position
+                return null;
+            }
+
+            // Weighted random selection
+            let random = Math.random() * totalBeads;
+            let cumulativeBeads = 0;
+
+            for (const entry of matchbox) {
+                cumulativeBeads += entry.beads;
+                if (random < cumulativeBeads) {
+                    return entry.move;
+                }
+            }
+            // Fallback (should not happen)
+            return matchbox[0].move; 
+        }
+        
+        /**
+         * Reinforces a selected move based on the game outcome.
+         * Uses the board key captured *before* the move was made, so the
+         * correct matchbox is reinforced.
+         * @param {number} moveIndex - The move that was just made by MENACE.
+         * @param {string} outcome - 'win', 'loss', or 'draw'.
+         * @param {string} boardKey - The canonical board key for the state when the move was made.
+         * @returns {{before:number, after:number, applied:number}|null} Bead counts and applied change.
+         */
+        function reinforceMove(moveIndex, outcome, boardKey) {
+            if (!boardKey) return;
+            const matchbox = MENACE_MATCHBOX[boardKey];
+
+            if (!matchbox) return; // Should not happen if logic is correct
+
+            const entry = matchbox.find(e => e.move === moveIndex);
+            if (!entry) return;
+
+            let reward = 0;
+            if (outcome === 'win') {
+                reward = 3;
+            } else if (outcome === 'draw') {
+                reward = 1;
+            } else if (outcome === 'loss') {
+                reward = -1;
+            }
+
+            const beadsBefore = entry.beads;
+            entry.beads += reward;
+            // Ensure beads never go below zero
+            entry.beads = Math.max(0, entry.beads);
+
+            // Return the bead counts and the change actually applied (may be
+            // smaller than `reward` if the bead count was clamped at zero).
+            return { before: beadsBefore, after: entry.beads, applied: entry.beads - beadsBefore };
+        }
+
+        /**
+         * A random opponent for training. Returns a random legal move.
+         * @param {Array<string|null>} board - The current board state.
+         * @returns {number} - A legal move index.
+         */
+        function randomOpponentMove(board) {
+            const legalMoves = [];
+            for (let i = 0; i < 9; i++) {
+                if (board[i] === null) {
+                    legalMoves.push(i);
+                }
+            }
+            return legalMoves[Math.floor(Math.random() * legalMoves.length)];
+        }
+
+
+        // =====================================================================
+        // 4. Game/Session Actions and Automated Training
+        // =====================================================================
+
+        /**
+         * Simulates a full training game between MENACE and a random opponent.
+         * This is used for automated training sessions. It runs to completion without
+         * waiting for user input.
+         * @param {'menace'|'opponent'} startingPlayer - Who starts the simulated game.
+         *   Callers must always pass the X side (menace if MENACE is X, otherwise
+         *   opponent), matching manual play where X always moves first.
+         * @returns {object} { outcome: 'win'|'loss'|'draw', winnerMark: 'X'|'O'|null }
+         */
+        function simulateTrainingGame(startingPlayer) {
+            // Local training state to avoid corrupting the main gameState for the user
+            const board = Array(9).fill(null);
+            let currentTurn = startingPlayer;
+            let winnerMark = null;
+            let isDraw = false;
+            let resigned = false;
+            const menaceHistory = []; // Stores { moveIndex, boardBeforeMove }
+
+            // Use the same marks as the current game setup, so training
+            // populates the matchbox keys MENACE actually uses when playing.
+            const MENACE_MARK = gameState.menaceMark;
+            const OPPONENT_MARK = gameState.humanMark;
+
+            // Alternates turns until the game ends.
+            while (true) {
+                const boardKey = getBoardKey(board, currentTurn === 'menace' ? MENACE_MARK : OPPONENT_MARK);
+                let moveIndex;
+
+                if (currentTurn === 'menace') {
+                    // Get or create the matchbox for this state
+                    const matchbox = getMatchbox(board, MENACE_MARK);
+                    // Select a move using MENACE's weighted sampling
+                    moveIndex = selectMove(matchbox);
+                    if (moveIndex === null) {
+                        // Empty matchbox: MENACE resigns, so the human wins
+                        resigned = true;
+                        winnerMark = OPPONENT_MARK;
+                        break;
+                    }
+                    // Record the move for later reinforcement
+                    menaceHistory.push({ moveIndex, boardKey });
+                } else {
+                    // Random opponent makes a random legal move
+                    moveIndex = randomOpponentMove(board);
+                }
+
+                // Apply the move
+                const mark = currentTurn === 'menace' ? MENACE_MARK : OPPONENT_MARK;
+                board[moveIndex] = mark;
+
+                // Check if game ended
+                const winner = checkWinner(board);
+                if (winner) {
+                    winnerMark = winner;
+                    break;
+                }
+                if (!board.includes(null)) {
+                    isDraw = true;
+                    break;
+                }
+
+                // Switch turns
+                currentTurn = currentTurn === 'menace' ? 'opponent' : 'menace';
+            }
+
+            // Determine the outcome from MENACE's perspective
+            let outcome;
+            if (winnerMark === MENACE_MARK) {
+                outcome = 'win';
+            } else if (winnerMark === OPPONENT_MARK) {
+                outcome = 'loss';
+            } else {
+                outcome = 'draw';
+            }
+
+            // Apply reinforcement to ALL of MENACE's moves in this game
+            for (const record of menaceHistory) {
+                reinforceMove(record.moveIndex, outcome, record.boardKey);
+            }
+
+            // Update global statistics
+            GAME_STATS.totalGames++;
+            if (outcome === 'win') {
+                GAME_STATS.menaceWins++;
+                GAME_STATS.gameHistory.push(1);
+            } else if (outcome === 'loss') {
+                GAME_STATS.humanWins++;
+                GAME_STATS.gameHistory.push(-1);
+            } else {
+                GAME_STATS.draws++;
+                GAME_STATS.gameHistory.push(0);
+            }
+
+            if (resigned) {
+                GAME_STATS.resignations++;
+            }
+            return { outcome, winnerMark, resigned };
+        }
+        
+        /**
+         * Runs automated training sessions against a random opponent.
+         * @param {number} count - Number of games to train.
+         */
+        async function startTraining(count) {
+            if (gameState.isTraining) return;
+
+            gameState.isTraining = true;
+            gameState.trainingCounter = 0;
+            
+            // Reset the board for training
+            gameState.board = Array(9).fill(null);
+            gameState.isGameOver = true; // Prevent manual play during training
+            gameState.gameMoveHistory = [];
+            renderBoard();
+            
+            // Always start each training game with X, matching manual play
+            // where X always moves first. This keeps training games within
+            // the same board positions manual play can reach.
+            const startingPlayer = gameState.menaceMark === 'X' ? 'menace' : 'opponent';
+            
+            let lastYield = performance.now();
+            while (gameState.trainingCounter < count) {
+                // Stop cleanly if training was cancelled (e.g. via New Game)
+                if (!gameState.isTraining) break;
+
+                statusMessageElement.className = 'info';
+                statusMessageElement.textContent = `Training MENACE (${gameState.menaceMark}) vs random opponent (${gameState.humanMark}): Game ${gameState.trainingCounter + 1} of ${count}...`;
+                
+                // Execute one training game (always opened by X)
+                simulateTrainingGame(startingPlayer);
+
+                gameState.trainingCounter++;
+                
+                // Update visuals periodically to avoid UI freeze during heavy training
+                // Yield about every 50 ms of work so large runs stay responsive
+                if (performance.now() - lastYield > 50 || gameState.trainingCounter === count) {
+                    updateVisuals();
+                    updateStatus(`Training MENACE (${gameState.menaceMark}) vs random opponent (${gameState.humanMark}): Game ${gameState.trainingCounter} of ${count}...`, 'info');
+                    lastYield = performance.now();
+                    await new Promise(resolve => setTimeout(resolve, 0)); // Yield to UI
+                }
+            }
+
+            // Detect whether the loop was cancelled before it could finish.
+            const wasCancelled = !gameState.isTraining;
+            gameState.isTraining = false;
+
+            // Persist beads learned so far, whether training completed or was stopped.
+            saveState();
+            refreshLearningLevel();
+
+            if (wasCancelled) {
+                // Training was stopped externally (e.g. New Game); the caller
+                // owns the board from here on, so leave it untouched.
+                return;
+            }
+
+            statusMessageElement.className = 'win';
+            statusMessageElement.textContent = `Training complete! MENACE has played ${count} games.`;
+            
+            // Reset the game state for manual play. X always starts a standard
+            // game of tic-tac-toe; if MENACE is X, it must move first.
+            gameState.board = Array(9).fill(null);
+            gameState.isGameOver = false;
+            gameState.currentPlayer = 'X';
+            gameState.gameMoveHistory = [];
+            gameState.currentBoardKey = null;
+            renderBoard();
+            updateMatchboxDisplay(getBoardKey(gameState.board, gameState.menaceMark));
+            updateVisuals();
+
+            if (gameState.currentPlayer === gameState.menaceMark) {
+                updateStatus(`Training complete! MENACE (${gameState.menaceMark}) is thinking...`);
+                setTimeout(makeMenaceMove, 500);
+            }
+        }
+
+        // =====================================================================
+        // 6. Learning Level: how close MENACE is to optimal play
+        // =====================================================================
+
+        const LEVELS = [
+            { max: 0.25, name: 'Beginner', icon: '🥚' },
+            { max: 0.5, name: 'Apprentice', icon: '🐣' },
+            { max: 0.75, name: 'Strategist', icon: '🧠' },
+            { max: 0.95, name: 'Master', icon: '🎯' },
+            { max: Infinity, name: 'Optimal', icon: '🏆' }
+        ];
+
+        // Cache of perfect-play values, keyed by board and side to move
+        const minimaxCache = new Map();
+
+        /**
+         * Value of playing `cell` for `side` when both sides then play perfectly:
+         * +1 win, 0 draw, -1 loss (from `side`'s point of view). Restores the board.
+         */
+        function moveValue(board, side, cell) {
+            const other = side === 'X' ? 'O' : 'X';
+            board[cell] = side;
+            let value;
+            if (checkWinner(board)) {
+                value = 1;
+            } else if (!board.includes(null)) {
+                value = 0;
+            } else {
+                value = -bestValue(board, other);
+            }
+            board[cell] = null;
+            return value;
+        }
+
+        /** Best achievable value for `side` to move on `board` (perfect play). */
+        function bestValue(board, side) {
+            const key = getBoardKey(board, side);
+            if (minimaxCache.has(key)) return minimaxCache.get(key);
+            let best = -Infinity;
+            for (let i = 0; i < 9; i++) {
+                if (board[i] === null) {
+                    best = Math.max(best, moveValue(board, side, i));
+                }
+            }
+            minimaxCache.set(key, best);
+            return best;
+        }
+
+        /**
+         * Average, over every matchbox MENACE has learned, of the bead share
+         * sitting on moves that keep the best achievable result.
+         * @returns {{share:number, positions:number}|null}
+         */
+        function computeOptimalShare() {
+            let total = 0;
+            let count = 0;
+            for (const key of Object.keys(MENACE_MATCHBOX)) {
+                const entries = MENACE_MATCHBOX[key];
+                if (!entries || entries.length === 0) continue;
+                const [cells, side] = key.split('|');
+                const board = [...cells].map(c => (c === '-' ? null : c));
+                const beadTotal = entries.reduce((s, e) => s + e.beads, 0);
+                const values = entries.map(e => ({ beads: e.beads, value: moveValue(board, side, e.move) }));
+                const best = Math.max(...values.map(v => v.value));
+                const optimalBeads = values.filter(v => v.value === best).reduce((s, v) => s + v.beads, 0);
+                total += beadTotal > 0 ? optimalBeads / beadTotal : 0;
+                count++;
+            }
+            return count > 0 ? { share: total / count, positions: count } : null;
+        }
+
+        function freshMatchbox(board) {
+            const entries = [];
+            for (let i = 0; i < 9; i++) {
+                if (board[i] === null) entries.push(new MatchboxEntry(i));
+            }
+            return entries;
+        }
+
+        /** A perfect opponent's move: random among its best moves. */
+        function perfectMove(board, side) {
+            const scored = [];
+            for (let i = 0; i < 9; i++) {
+                if (board[i] === null) scored.push({ cell: i, value: moveValue(board, side, i) });
+            }
+            const best = Math.max(...scored.map(s => s.value));
+            const options = scored.filter(s => s.value === best);
+            return options[Math.floor(Math.random() * options.length)].cell;
+        }
+
+        /**
+         * Plays MENACE against a perfect opponent without learning or saving.
+         * MENACE picks with its normal weighted choice; an empty matchbox is a resignation.
+         */
+        function runPerfectPlayTest(games) {
+            const menace = gameState.menaceMark;
+            const opponent = gameState.humanMark;
+            const result = { games, wins: 0, draws: 0, losses: 0, resignations: 0 };
+
+            for (let g = 0; g < games; g++) {
+                const board = Array(9).fill(null);
+                let turn = 'X';
+                let outcome;
+                while (true) {
+                    let cell;
+                    if (turn === menace) {
+                        // Read-only lookup: a missing box is a fresh box that is never stored
+                        const box = MENACE_MATCHBOX[getBoardKey(board, menace)] || freshMatchbox(board);
+                        cell = selectMove(box);
+                        if (cell === null) {
+                            result.resignations++;
+                            outcome = 'loss';
+                            break;
+                        }
+                    } else {
+                        cell = perfectMove(board, opponent);
+                    }
+                    board[cell] = turn;
+                    if (checkWinner(board)) {
+                        outcome = turn === menace ? 'win' : 'loss';
+                        break;
+                    }
+                    if (!board.includes(null)) {
+                        outcome = 'draw';
+                        break;
+                    }
+                    turn = turn === 'X' ? 'O' : 'X';
+                }
+                if (outcome === 'win') result.wins++;
+                else if (outcome === 'draw') result.draws++;
+                else result.losses++;
+            }
+            return result;
+        }
+
+        /** Updates the Learning Level panel. */
+        function refreshLearningLevel() {
+            const badge = document.getElementById('level-badge');
+            const fill = document.getElementById('level-fill');
+            const optimalEl = document.getElementById('optimal-share');
+            const perfectEl = document.getElementById('perfect-test');
+            if (!badge) return;
+
+            const measured = computeOptimalShare();
+            if (!measured) {
+                badge.textContent = 'No moves learned yet';
+                fill.style.width = '0%';
+                optimalEl.textContent = '–';
+                perfectEl.textContent = 'Train MENACE to see its level.';
+                return;
+            }
+
+            const level = LEVELS.find(l => measured.share < l.max);
+            const pct = Math.round(measured.share * 100);
+            badge.textContent = `${level.icon} ${level.name} (${measured.positions} positions learned)`;
+            fill.style.width = `${pct}%`;
+            optimalEl.textContent = `${pct}%`;
+
+            const test = runPerfectPlayTest(200);
+            const notLost = Math.round(((test.wins + test.draws) / test.games) * 100);
+            perfectEl.textContent = `${notLost}% not lost (${test.wins}W ${test.draws}D ${test.losses}L, ${test.resignations} resigned)`;
+        }
+
+        // =====================================================================
+        // 5. Rendering and Event Wiring
+        // =====================================================================
+
+        function renderBoard() {
+            boardElement.innerHTML = '';
+            const rowNames = ['Top', 'Middle', 'Bottom'];
+            const colNames = ['Left', 'Center', 'Right'];
+            for (let i = 0; i < 9; i++) {
+                const row = Math.floor(i / 3);
+                const col = i % 3;
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.dataset.index = i;
+                cell.dataset.value = gameState.board[i] || '';
+                cell.setAttribute('role', 'button');
+                cell.setAttribute('tabindex', gameState.isGameOver ? '-1' : '0');
+
+                // Accessibility: describe position (row/column) and current occupant
+                const occupant = gameState.board[i] ? gameState.board[i] : 'Empty';
+                cell.setAttribute('aria-label', `${rowNames[row]} ${colNames[col]} cell: ${occupant}`);
+
+                if (gameState.board[i]) {
+                    cell.classList.add('occupied');
+                    cell.textContent = gameState.board[i];
+                    // Add data-value for CSS targeting
+                    cell.dataset.value = gameState.board[i]; 
+                } else {
+                    cell.textContent = '';
+                    cell.addEventListener('click', handleHumanMove);
+                    cell.addEventListener('keydown', handleKeydown);
+                }
+                boardElement.appendChild(cell);
+            }
+        }
+        
+        function handleKeydown(event) {
+            if (gameState.isGameOver || gameState.currentPlayer !== gameState.humanMark) return;
+            if (event.key === 'Enter' || event.key === ' ') {
+                const cell = event.currentTarget;
+                const index = parseInt(cell.dataset.index);
+                handleHumanMove(event);
+            }
+        }
+
+        function handleHumanMove(event) {
+            if (gameState.currentPlayer !== gameState.humanMark || gameState.isGameOver) return;
+
+            const cell = event.currentTarget;
+            const index = parseInt(cell.dataset.index);
+
+            // Make move
+            gameState.board[index] = gameState.humanMark;
+            
+            // Remove click listener immediately
+            cell.removeEventListener('click', handleHumanMove);
+            cell.removeEventListener('keydown', handleKeydown);
+            cell.classList.add('occupied');
+            cell.dataset.value = gameState.humanMark;
+            cell.textContent = gameState.humanMark;
+
+            // Trigger animation
+            cell.classList.add('bead-pop');
+            setTimeout(() => cell.classList.remove('bead-pop'), 200);
+
+            // Check state
+            const endStatus = checkGameEnd(gameState.board);
+
+            if (endStatus) {
+                gameState.isGameOver = true;
+                
+                // Determine the outcome from MENACE's perspective for the message and reinforcement
+                const winnerMark = checkWinner(gameState.board);
+                const outcome = winnerMark === gameState.menaceMark ? 'win' : (winnerMark ? 'loss' : 'draw');
+                
+                // Record the manual game result so the win-rate chart and
+                // counters reflect all games, not just automated training.
+                recordManualResult(outcome);
+
+                // 5. Reinforce ALL of MENACE's moves in this game (Human winning penalizes MENACE)
+                const changes = reinforceGame(outcome);
+
+                displayGameResult(outcome, changes);
+            } else {
+                // Switch turn to MENACE
+                gameState.currentPlayer = gameState.menaceMark; 
+                // If not training, start the MENACE move loop
+                if (!gameState.isTraining) {
+                    setTimeout(makeMenaceMove, 500); // Delay for visual effect
+                }
+            }
+            
+            renderBoard();
+            if (!endStatus) {
+                // Only update the status while the game is ongoing; the
+                // result message set by displayGameResult must stand.
+                updateStatus(`It is now MENACE's turn...`);
+            }
+        }
+
+        async function makeMenaceMove() {
+            if (gameState.isGameOver || gameState.currentPlayer !== gameState.menaceMark) return;
+
+            const currentBoardKey = getBoardKey(gameState.board, gameState.menaceMark);
+            gameState.currentBoardKey = currentBoardKey;
+            const matchbox = getMatchbox(gameState.board, gameState.menaceMark);
+            
+            // 1. Select move (null means the matchbox is empty: resign)
+            const moveIndex = selectMove(matchbox);
+            if (moveIndex === null) {
+                resignGame();
+                return;
+            }
+
+            // 2. Record move for history (with the key captured before the move)
+            gameState.gameMoveHistory.push({ 
+                player: 'MENACE', 
+                move: moveIndex, 
+                boardKey: currentBoardKey 
+            });
+
+            // 3. Make move
+            gameState.board[moveIndex] = gameState.menaceMark;
+
+            // 4. Check state
+            const endStatus = checkGameEnd(gameState.board);
+            const winnerMark = checkWinner(gameState.board);
+            let outcome = null;
+            if (endStatus) {
+                gameState.isGameOver = true;
+                outcome = winnerMark === gameState.menaceMark ? 'win' : (winnerMark ? 'loss' : 'draw');
+            }
+
+            // 5. Render board first so the animation applies to the freshly-built cell
+            renderBoard();
+
+            // 6. Trigger animation on the new cell (guarded properly)
+            const cell = boardElement.children[moveIndex];
+            if (cell) {
+                cell.classList.add('bead-pop');
+                setTimeout(() => cell.classList.remove('bead-pop'), 200);
+            }
+
+            if (outcome) {
+                // Record the manual game result so the win-rate chart and
+                // counters reflect all games, not just automated training.
+                recordManualResult(outcome);
+
+                // 7. Reinforce ALL of MENACE's moves in this game for any ending
+                const changes = reinforceGame(outcome);
+
+                displayGameResult(outcome, changes);
+            } else {
+                // Switch turn back to human
+                gameState.currentPlayer = gameState.humanMark; 
+                updateStatus("It's your turn! Make a move.");
+            }
+
+            updateMatchboxDisplay(currentBoardKey);
+        }
+
+        /**
+         * Resignation protocol: MENACE's matchbox for this position is empty,
+         * so it has no bead to choose and resigns. The game is a loss for MENACE,
+         * and every move it made in the game receives the usual loss penalty.
+         */
+        function resignGame() {
+            gameState.isGameOver = true;
+            recordManualResult('loss');
+            GAME_STATS.resignations++;
+            const changes = reinforceGame('loss');
+            renderBoard();
+            displayGameResult('loss', changes, true);
+            updateMatchboxDisplay(gameState.currentBoardKey);
+        }
+
+        /**
+         * Records the result of a manually played game in the shared stats,
+         * so the win-rate chart and counters include manual games too.
+         * @param {'win'|'loss'|'draw'} outcome - Outcome from MENACE's perspective.
+         */
+        function recordManualResult(outcome) {
+            GAME_STATS.totalGames++;
+            if (outcome === 'win') {
+                GAME_STATS.menaceWins++;
+                GAME_STATS.gameHistory.push(1);
+            } else if (outcome === 'loss') {
+                GAME_STATS.humanWins++;
+                GAME_STATS.gameHistory.push(-1);
+            } else {
+                GAME_STATS.draws++;
+                GAME_STATS.gameHistory.push(0);
+            }
+        }
+
+        /**
+         * Reinforces every MENACE move recorded in the current game, applying
+         * the documented +3/+1/−1 rule for the game outcome.
+         * @param {'win'|'loss'|'draw'} outcome - Outcome from MENACE's perspective.
+         * @returns {Array<object>} One entry per MENACE move, in play order:
+         *   { move, boardKey, before, after, applied }.
+         */
+        function reinforceGame(outcome) {
+            const changes = [];
+            for (const record of gameState.gameMoveHistory) {
+                if (record.player === 'MENACE') {
+                    const result = reinforceMove(record.move, outcome, record.boardKey);
+                    if (result) {
+                        changes.push({ move: record.move, boardKey: record.boardKey, ...result });
+                    }
+                }
+            }
+            saveState();
+            return changes;
+        }
+
+        function displayGameResult(outcome, changes, resigned = false) {
+            gameState.isGameOver = true;
+            let message = "";
+            let className = "info";
+            const winnerMark = checkWinner(gameState.board);
+            
+            if (resigned) {
+                message = "MENACE resigns! Its matchbox for this position is empty, so it has no beads left to choose from. You win!";
+                className = 'win';
+            } else if (outcome === 'win') {
+                message = `MENACE Wins! ${gameState.menaceMark} secured the victory.`;
+                className = 'loss';
+            } else if (outcome === 'loss') {
+                message = `You Win! ${gameState.humanMark} scored the victory.`;
+                className = 'win';
+            } else {
+                message = "It's a Draw! 🤝";
+                className = 'draw';
+            }
+            if (!winnerMark && outcome !== 'draw' && !resigned) {
+                className = 'info';
+            }
+
+            updateStatus(message, className);
+            updateVisuals();
+            refreshLearningLevel();
+            
+            renderReinforcementReport(outcome, changes, resigned);
+        }
+        
+        function updateStatus(message, className = 'info') {
+            statusMessageElement.textContent = message;
+            statusMessageElement.className = className;
+        }
+
+        /**
+         * Shows how each matchbox used in the finished game changed. Every MENACE
+         * move gets a mini board (chosen cell highlighted) and its bead counts
+         * before and after reinforcement.
+         * @param {'win'|'loss'|'draw'} outcome - Outcome from MENACE's perspective.
+         * @param {Array<object>} changes - Output of reinforceGame.
+         * @param {boolean} resigned - True if MENACE resigned.
+         */
+        function renderReinforcementReport(outcome, changes, resigned) {
+            let headline;
+            if (resigned) {
+                headline = "MENACE resigned: its matchbox was empty. The game counts as a loss, so every move it made loses a bead.";
+            } else if (outcome === 'win') {
+                headline = "MENACE won! Every move it made gains beads.";
+            } else if (outcome === 'draw') {
+                headline = "Draw. Every move MENACE made gains a bead.";
+            } else {
+                headline = "MENACE lost. Every move it made loses a bead.";
+            }
+
+            const rewardText = { win: '+3', draw: '+1', loss: '−1' }[outcome];
+            const cards = changes.map((change, i) => {
+                const cells = change.boardKey.split('|')[0];
+                let miniBoard = '';
+                for (let c = 0; c < 9; c++) {
+                    const picked = c === change.move ? ' picked' : '';
+                    // The chosen cell is empty in the snapshot, so show MENACE's mark there
+                    const mark = c === change.move ? gameState.menaceMark : (cells[c] === '-' ? '' : cells[c]);
+                    miniBoard += `<div class="mini-cell${picked}">${mark}</div>`;
+                }
+                const sign = change.applied > 0 ? 'gain' : (change.applied < 0 ? 'drop' : 'flat');
+                const delta = change.applied > 0 ? `+${change.applied}` : (change.applied < 0 ? `−${Math.abs(change.applied)}` : '±0');
+                const row = Math.floor(change.move / 3) + 1;
+                const col = (change.move % 3) + 1;
+                const note = change.applied === 0 && change.before === 0 ? ' (already empty)' : '';
+                return `
+                    <div class="report-card">
+                        <div class="mini-board">${miniBoard}</div>
+                        <div>
+                            <strong>MENACE move ${i + 1}</strong><br>
+                            cell ${row},${col}<br>
+                            <span class="bead-change ${sign}">${change.before} → ${change.after} beads (${delta})${note}</span>
+                        </div>
+                    </div>`;
+            }).join('');
+
+            const body = changes.length === 0
+                ? '<p class="report-note">MENACE made no moves in this game, so no matchboxes changed.</p>'
+                : `<div class="report-cards">${cards}</div>
+                   <p class="report-note">Each move's bead count changes by ${rewardText} (never below 0). These matchboxes are updated now.</p>`;
+
+            reportElement.innerHTML = `
+                <h3>📦 Matchbox report</h3>
+                <p class="report-headline">${headline}</p>
+                ${body}`;
+            reportElement.style.display = 'block';
+            if (reportElement.scrollIntoView) {
+                reportElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+
+        function updateMatchboxDisplay(boardKey) {
+            matchboxDisplayElement.innerHTML = '';
+            const matchbox = MENACE_MATCHBOX[boardKey];
+            
+            if (!matchbox) {
+                matchboxDisplayElement.innerHTML = '<p>No moves evaluated yet.</p>';
+                return;
+            }
+
+            matchbox.forEach(entry => {
+                const moveElement = document.createElement('div');
+                moveElement.className = 'move-option';
+                moveElement.dataset.move = entry.move;
+                moveElement.innerHTML = `
+                    <span>Move ${entry.move}</span>
+                    <span class="bead-count">${entry.beads} beads</span>
+                `;
+                // Highlight the move that was just played by MENACE, if history exists
+                const lastPlayed = gameState.gameMoveHistory.length > 0 ? gameState.gameMoveHistory[gameState.gameMoveHistory.length - 1] : null;
+                if (lastPlayed && lastPlayed.player === 'MENACE' && lastPlayed.move === entry.move) {
+                    moveElement.classList.add('selected');
+                }
+                matchboxDisplayElement.appendChild(moveElement);
+            });
+        }
+
+        function updateVisuals() {
+            // --- Bead Count Chart (with move labels and dynamic widths) ---
+            beadChartElement.innerHTML = '';
+            const matchbox = MENACE_MATCHBOX[getBoardKey(gameState.board, gameState.menaceMark)] || [];
+            
+            // Re-calculate the overall max beads if needed, but for simplicity, use a sensible max
+            const maxBeads = Math.max(...matchbox.map(e => e.beads), 1); 
+
+            matchbox.forEach(entry => {
+                const barContainer = document.createElement('div');
+                barContainer.className = 'bar-container';
+                
+                const bar = document.createElement('div');
+                const percentage = (entry.beads / maxBeads) * 100;
+                bar.className = 'bar';
+                bar.style.height = `${percentage}%`;
+                
+                const label = document.createElement('div');
+                label.className = 'bar-label';
+                // Convert 0-8 index to row/column representation for readability
+                const row = Math.floor(entry.move / 3) + 1;
+                const col = (entry.move % 3) + 1;
+                label.textContent = `${row},${col}`;
+                
+                barContainer.appendChild(bar);
+                barContainer.appendChild(label);
+                beadChartElement.appendChild(barContainer);
+            });
+            
+            // --- Win Rate Chart (Canvas) ---
+            const history = GAME_STATS.gameHistory;
+            const numSamples = history.length;
+            const canvas = document.getElementById('win-rate-chart');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+
+            // Resize canvas to fit container width (this is rough, but good for inline rendering)
+            canvas.width = canvas.offsetWidth;
+            canvas.height = 50;
+
+            const winCount = history.filter(h => h === 1).length;
+            const totalRecorded = history.length;
+            const winRate = totalRecorded > 0 ? winCount / totalRecorded : 0;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw Sparkline (Simplified line chart)
+            ctx.strokeStyle = varStyle('--bead-color-o'); // Need a utility to get CSS var color
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+
+            const points = history.map((outcome, i) => {
+                // Scale points to fit the canvas height (0 to 50px)
+                // Map -1, 0, 1 to vertical position. 1 (Win) = top, -1 (Loss) = bottom, 0 (Draw) = middle.
+                // For sparkline, let's map 1=high, 0=mid, -1=low.
+                const y = 50 - ((outcome + 1) * 16.66); // ~16.66px spacing
+                // Fix: prevent division by zero (0/0 -> NaN) when there is only 1 sample
+                const x = numSamples === 1 ? canvas.width / 2 : (i / (numSamples - 1)) * canvas.width;
+                return { x, y };
+            });
+
+            if (points.length > 0) {
+                ctx.moveTo(points[0].x, points[0].y);
+                for (let i = 1; i < points.length; i++) {
+                    ctx.lineTo(points[i].x, points[i].y);
+                }
+                ctx.stroke();
+            }
+            
+            // Display current win rate as text/overlay if needed, but the line chart is the focus.
+            ctx.fillStyle = '#555';
+            ctx.font = '10px sans-serif';
+            ctx.fillText(`WR: ${(winRate * 100).toFixed(1)}% (${totalRecorded} games)`, 5, 15);
+        }
+        
+        // Helper to retrieve CSS variable values dynamically
+        function varStyle(variable) {
+            return getComputedStyle(document.documentElement).getPropertyValue(variable).trim();
+        }
+
+
+        function initializeGame() {
+            loadState();
+
+            // 1. Determine player marks based on the selector
+            const markSelector = document.getElementById('player-mark');
+            gameState.humanMark = markSelector.value;
+            gameState.menaceMark = gameState.humanMark === 'X' ? 'O' : 'X';
+
+            // 2. Properly reset the board and state for a new game
+            gameState.board = Array(9).fill(null);
+            gameState.isGameOver = false;
+            gameState.gameMoveHistory = [];
+            gameState.currentBoardKey = null;
+            gameState.isTraining = false;
+            gameState.trainingCounter = 0;
+
+            // 3. X always starts a standard game of tic-tac-toe.
+            // If MENACE is X, it gets the first move automatically.
+            gameState.currentPlayer = 'X';
+            
+            // Hide any matchbox report left over from the previous game
+            reportElement.style.display = 'none';
+
+            // Show how close MENACE is to optimal play
+            refreshLearningLevel();
+
+            renderBoard();
+            updateMatchboxDisplay(getBoardKey(gameState.board, gameState.menaceMark));
+            updateVisuals();
+
+            if (gameState.currentPlayer === gameState.menaceMark) {
+                updateStatus(`MENACE (${gameState.menaceMark}) is thinking...`);
+                setTimeout(makeMenaceMove, 500);
+            } else {
+                updateStatus(`You are ${gameState.humanMark}! Make the first move.`);
+            }
+        }
+
+        // --- Event Listeners & Initialization ---
+
+        document.getElementById('reset-experience').addEventListener('click', resetState);
+        document.getElementById('reset-game').addEventListener('click', () => {
+            // 1. Check if a manual game is in progress
+            const isManualGameInProgress = !gameState.isGameOver && !gameState.isTraining && gameState.gameMoveHistory.length > 0;
+
+            // 2. Ask for confirmation before resetting
+            if (isManualGameInProgress) {
+                if (!confirm("A manual game is currently in progress. Are you sure you want to reset the board?")) {
+                    return; // User cancelled
+                }
+            }
+
+            // 3. If training is running, persist its unsaved beads first, then
+            //    stop training so the loop halts cleanly before the board reset.
+            if (gameState.isTraining) {
+                saveState();
+                gameState.isTraining = false;
+            }
+
+            initializeGame();
+        });
+        document.getElementById('start-training').addEventListener('click', async () => {
+            // Prevent a second concurrent training loop
+            if (gameState.isTraining) return;
+
+            // Get value from the games-to-train slider
+            const count = parseInt(trainingSpeedInput.value);
+            if (isNaN(count) || count < 1 || count > 1000000) {
+                alert("Please choose between 1 and 1,000,000 games.");
+                return;
+            }
+            await startTraining(count);
+        });
+        
+        // Preset buttons for the games-to-train input
+        const trainingSpeedInput = document.getElementById('training-games');
+        document.querySelectorAll('.preset').forEach(btn => {
+            btn.addEventListener('click', () => {
+                trainingSpeedInput.value = btn.dataset.games;
+            });
+        });
+        document.getElementById('evaluate-level').addEventListener('click', refreshLearningLevel);
+
+
+        // Initialize the application
+        window.onload = initializeGame;
+    </script>
+</body>
+</html>
