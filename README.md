@@ -4,6 +4,8 @@ This project is a small web page that lets you play tic-tac-toe against
 **MENACE**. MENACE is a machine that learns from games. It uses only
 matchboxes and beads, and it needs no computer.
 
+Play it online at: **https://etnt.github.io/menace/**
+
 The original MENACE was built in 1961 by Donald Michie. Read more on
 [Wikipedia](https://en.wikipedia.org/wiki/Matchbox_Educable_Noughts_and_Crosses_Engine).
 
