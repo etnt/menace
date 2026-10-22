@@ -320,6 +320,52 @@
             font-size: 0.85em;
         }
 
+        /* Explainer dialog */
+        .explain-btn {
+            margin-top: 8px;
+        }
+        #explainer {
+            width: min(720px, calc(100% - 32px));
+            max-height: 88vh;
+            border: none;
+            border-radius: 14px;
+            padding: 0;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+        #explainer::backdrop {
+            background: rgba(20, 20, 40, 0.55);
+        }
+        .explainer-body {
+            padding: 24px 28px;
+            line-height: 1.5;
+            overflow-y: auto;
+            max-height: 88vh;
+            box-sizing: border-box;
+        }
+        .explainer-body h2 {
+            margin-top: 0;
+            color: var(--border-color);
+        }
+        .explainer-body h3 {
+            margin: 18px 0 6px;
+        }
+        .explainer-body table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95em;
+        }
+        .explainer-body th,
+        .explainer-body td {
+            border-bottom: 1px solid #ddd;
+            padding: 6px;
+            text-align: left;
+            vertical-align: top;
+        }
+        .explainer-actions {
+            text-align: center;
+            margin-top: 20px;
+        }
+
         /* Mobile adjustments */
         @media (max-width: 900px) {
             #game-area {
@@ -338,7 +384,54 @@
         <header>
             <h1>🧠 <a href="https://en.wikipedia.org/wiki/Matchbox_Educable_Noughts_and_Crosses_Engine" target="_blank" rel="noopener noreferrer">MENACE</a>: A Reinforcement Learning Experiment</h1>
             <p>Play Tic-Tac-Toe against MENACE and watch its matchbox change with experience.</p>
+            <button id="open-explainer" class="explain-btn">💡 What is this? Why MENACE?</button>
         </header>
+
+        <dialog id="explainer" aria-labelledby="explainer-title">
+            <div class="explainer-body">
+                <h2 id="explainer-title">How MENACE learns, and why it matters</h2>
+
+                <h3>The big idea</h3>
+                <p><strong>Reinforcement learning (RL)</strong> is learning by trial and error. An agent tries actions. It gets rewards for good results and penalties for bad ones. Over time it prefers the actions that worked. Nobody tells it the right answer.</p>
+
+                <h3>MENACE is RL in a box</h3>
+                <table>
+                    <tr><th>RL term</th><th>In MENACE</th></tr>
+                    <tr><td>Agent</td><td>MENACE (all the matchboxes together)</td></tr>
+                    <tr><td>State</td><td>One board position (one matchbox)</td></tr>
+                    <tr><td>Action</td><td>One move (one kind of bead)</td></tr>
+                    <tr><td>Policy</td><td>The bead counts in each box. They set how likely each move is.</td></tr>
+                    <tr><td>Reward</td><td>Bead changes: +3 for a win, +1 for a draw, −1 for a loss</td></tr>
+                    <tr><td>Exploration</td><td>The random bead draw. MENACE still tries moves it is unsure about.</td></tr>
+                    <tr><td>Episode</td><td>One game</td></tr>
+                </table>
+
+                <h3>Why it is a good teaching example</h3>
+                <ul>
+                    <li><strong>You can see the learning.</strong> The beads are the learned values. You watch them change in the matchbox view.</li>
+                    <li><strong>Delayed reward.</strong> The result is known only at the end of the game. Yet a loss punishes every earlier move. Working out which earlier moves caused the result is called <em>credit assignment</em>. It is the core problem of RL.</li>
+                    <li><strong>Exploration vs. exploitation.</strong> MENACE must try new moves to find good ones. It must also reuse moves it knows work. The bead draw balances both.</li>
+                    <li><strong>Dead ends.</strong> An empty matchbox forces MENACE to resign. The loss then punishes the path that led there. MENACE learns to avoid that path earlier.</li>
+                    <li><strong>No computer needed.</strong> MENACE was built from matchboxes in 1961. The learning rule is the idea, not the hardware.</li>
+                </ul>
+
+                <h3>Things to try</h3>
+                <ol>
+                    <li>Play 10 games. Read the matchbox report after each one.</li>
+                    <li>Train 1,000 games. Then check the Learning Level panel.</li>
+                    <li>Reset MENACE and compare how fast it learns.</li>
+                </ol>
+
+                <h3>Limits</h3>
+                <p>Tic-Tac-Toe has only about 5,500 board positions. MENACE stores each one separately. Large problems need methods that <em>generalize</em>, such as neural networks, so that similar situations share what they learn. Real RL problems also have noisy and unknown rewards. MENACE is a simple, clear first step.</p>
+
+                <p>Read more: <a href="https://en.wikipedia.org/wiki/Matchbox_Educable_Noughts_and_Crosses_Engine" target="_blank" rel="noopener noreferrer">MENACE on Wikipedia</a> · Sutton &amp; Barto, <em>Reinforcement Learning: An Introduction</em> (free online).</p>
+
+                <div class="explainer-actions">
+                    <button id="close-explainer">Got it</button>
+                </div>
+            </div>
+        </dialog>
 
         <div id="controls">
             <label for="player-mark">Your Mark:</label>
@@ -1426,6 +1519,14 @@
             });
         });
         document.getElementById('evaluate-level').addEventListener('click', refreshLearningLevel);
+
+        // About dialog: open with the header button, close with the button or a click outside it
+        const explainer = document.getElementById('explainer');
+        document.getElementById('open-explainer').addEventListener('click', () => explainer.showModal());
+        document.getElementById('close-explainer').addEventListener('click', () => explainer.close());
+        explainer.addEventListener('click', (event) => {
+            if (event.target === explainer) explainer.close();
+        });
 
 
         // Initialize the application
