@@ -207,20 +207,6 @@
         .draw { background-color: #fff3cd; color: #856404; }
         .info { background-color: #e9ecef; color: #333; }
 
-        /* Learning Visuals */
-        #visuals-container {
-            margin-top: 20px;
-            padding-top: 15px;
-            border-top: 1px solid #ccc;
-        }
-        #win-rate-chart {
-            width: 100%;
-            height: 50px;
-            border: 1px solid #ccc;
-            margin-top: 10px;
-            border-radius: 5px;
-        }
-
         /* Reinforcement report: shows how each matchbox used in the game changed */
         #reinforcement-report {
             background: #fffdf5;
@@ -395,11 +381,6 @@
                     <p class="bead-info" style="font-size: 0.8em; color: #555;">Starting bead count: 4 per move</p>
                 </div>
 
-                <div id="visuals-container">
-                    <p id="win-rate-label">Win rate over time (All games):</p>
-                    <canvas id="win-rate-chart"></canvas>
-                </div>
-
                 <div id="learning-level">
                     <h3>Learning Level</h3>
                     <div id="level-badge" class="level-badge">Not measured yet</div>
@@ -470,7 +451,6 @@
         const boardElement = document.getElementById('board');
         const statusMessageElement = document.getElementById('status-message');
         const matchboxDisplayElement = document.getElementById('matchbox-display');
-        const winRateChartElement = document.getElementById('win-rate-chart');
         const statsElement = document.getElementById('session-stats');
         const reportElement = document.getElementById('reinforcement-report');
 
@@ -828,7 +808,6 @@
                 // Update visuals periodically to avoid UI freeze during heavy training
                 // Yield about every 50 ms of work so large runs stay responsive
                 if (performance.now() - lastYield > 50 || gameState.trainingCounter === count) {
-                    updateVisuals();
                     updateStatus(`Training MENACE (${gameState.menaceMark}) vs random opponent (${gameState.humanMark}): Game ${gameState.trainingCounter} of ${count}...`, 'info');
                     lastYield = performance.now();
                     await new Promise(resolve => setTimeout(resolve, 0)); // Yield to UI
@@ -861,7 +840,6 @@
             gameState.currentBoardKey = null;
             renderBoard();
             updateMatchboxDisplay(getBoardKey(gameState.board, gameState.menaceMark));
-            updateVisuals();
 
             if (gameState.currentPlayer === gameState.menaceMark) {
                 updateStatus(`Training complete! MENACE (${gameState.menaceMark}) is thinking...`);
@@ -1107,8 +1085,7 @@
                 const winnerMark = checkWinner(gameState.board);
                 const outcome = winnerMark === gameState.menaceMark ? 'win' : (winnerMark ? 'loss' : 'draw');
                 
-                // Record the manual game result so the win-rate chart and
-                // counters reflect all games, not just automated training.
+                // Record the manual game result so the counters include all games.
                 recordManualResult(outcome);
 
                 // 5. Reinforce ALL of MENACE's moves in this game (Human winning penalizes MENACE)
@@ -1176,8 +1153,7 @@
             }
 
             if (outcome) {
-                // Record the manual game result so the win-rate chart and
-                // counters reflect all games, not just automated training.
+                // Record the manual game result so the counters include all games.
                 recordManualResult(outcome);
 
                 // 7. Reinforce ALL of MENACE's moves in this game for any ending
@@ -1210,7 +1186,7 @@
 
         /**
          * Records the result of a manually played game in the shared stats,
-         * so the win-rate chart and counters include manual games too.
+         * so the counters include manual games too.
          * @param {'win'|'loss'|'draw'} outcome - Outcome from MENACE's perspective.
          */
         function recordManualResult(outcome) {
@@ -1272,7 +1248,6 @@
             }
 
             updateStatus(message, className);
-            updateVisuals();
             refreshLearningLevel();
             
             renderReinforcementReport(outcome, changes, resigned);
@@ -1370,59 +1345,6 @@
             });
         }
 
-        function updateVisuals() {
-            // --- Win Rate Chart (Canvas) ---
-            const history = GAME_STATS.gameHistory;
-            const numSamples = history.length;
-            const canvas = document.getElementById('win-rate-chart');
-            if (!canvas) return;
-            const ctx = canvas.getContext('2d');
-
-            // Resize canvas to fit container width (this is rough, but good for inline rendering)
-            canvas.width = canvas.offsetWidth;
-            canvas.height = 50;
-
-            const winCount = history.filter(h => h === 1).length;
-            const totalRecorded = history.length;
-            const winRate = totalRecorded > 0 ? winCount / totalRecorded : 0;
-
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Draw Sparkline (Simplified line chart)
-            ctx.strokeStyle = varStyle('--bead-color-o'); // Need a utility to get CSS var color
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-
-            const points = history.map((outcome, i) => {
-                // Scale points to fit the canvas height (0 to 50px)
-                // Map -1, 0, 1 to vertical position. 1 (Win) = top, -1 (Loss) = bottom, 0 (Draw) = middle.
-                // For sparkline, let's map 1=high, 0=mid, -1=low.
-                const y = 50 - ((outcome + 1) * 16.66); // ~16.66px spacing
-                // Fix: prevent division by zero (0/0 -> NaN) when there is only 1 sample
-                const x = numSamples === 1 ? canvas.width / 2 : (i / (numSamples - 1)) * canvas.width;
-                return { x, y };
-            });
-
-            if (points.length > 0) {
-                ctx.moveTo(points[0].x, points[0].y);
-                for (let i = 1; i < points.length; i++) {
-                    ctx.lineTo(points[i].x, points[i].y);
-                }
-                ctx.stroke();
-            }
-            
-            // Display current win rate as text/overlay if needed, but the line chart is the focus.
-            ctx.fillStyle = '#555';
-            ctx.font = '10px sans-serif';
-            ctx.fillText(`WR: ${(winRate * 100).toFixed(1)}% (${totalRecorded} games)`, 5, 15);
-        }
-        
-        // Helper to retrieve CSS variable values dynamically
-        function varStyle(variable) {
-            return getComputedStyle(document.documentElement).getPropertyValue(variable).trim();
-        }
-
-
         function initializeGame() {
             loadState();
 
@@ -1451,7 +1373,6 @@
 
             renderBoard();
             updateMatchboxDisplay(getBoardKey(gameState.board, gameState.menaceMark));
-            updateVisuals();
 
             if (gameState.currentPlayer === gameState.menaceMark) {
                 updateStatus(`MENACE (${gameState.menaceMark}) is thinking...`);
