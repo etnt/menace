@@ -439,13 +439,14 @@
                 <p>Moves that led to wins collect beads and get picked more often. Moves that led to losses lose beads and slowly disappear. That is all there is to it, and it is enough to learn the game.</p>
 
                 <div class="example">
-                    <strong>A small example.</strong> On an empty board, all four corners play the same way: they are mirror copies of each other. The same is true of the four edges. So MENACE's first box only needs <strong>three bead colours</strong>: one for "a corner", one for "an edge" and one for "the centre". It starts with 4 beads of each colour, <strong>12 beads in total</strong>. Each colour has 4 of the 12 beads, so each kind of move has a 1-in-3 chance. When a corner bead is drawn, MENACE plays one of the corners.
+                    <strong>A small example.</strong> On an empty board, all four corners play the same way: they are mirror copies of each other. The same is true of the four edges. So MENACE's first box only needs <strong>three bead colours</strong>: one for "a corner", one for "an edge" and one for "the centre". It starts with 8 beads of each colour, <strong>24 beads in total</strong>. Each colour has 8 of the 24 beads, so each kind of move has a 1-in-3 chance. When a corner bead is drawn, MENACE plays one of the corners.
                     <br><br>
-                    Now MENACE plays an edge and loses, so the edge colour drops to 3 beads. Next game it plays the centre and wins, so the centre colour goes up to 7 beads. The box now holds 4 + 3 + 7 = 14 beads. The centre has 7 of them, so MENACE now opens in the centre half the time.
+                    Now MENACE plays an edge and loses, so the edge colour drops to 7 beads. Next game it plays the centre and wins, so the centre colour goes up to 11 beads. The box now holds 8 + 7 + 11 = 26 beads. The centre has 11 of them, so MENACE now opens in the centre a bit more than 4 times in 10.
                 </div>
 
                 <h3>What if a box runs out of beads?</h3>
                 <p>Then MENACE has no move it trusts there, so it <strong>gives up</strong>. That counts as a loss, so the moves that led into that position lose beads too. Over time MENACE learns to stay away from such positions.</p>
+                <p>There is one exception. If the box for MENACE's <em>first</em> move empties (for example because you beat it many games in a row), MENACE would give up before making any move. No beads would change, so it would give up in every game after that, forever. To avoid this dead end, this version <strong>refills that box with fresh beads</strong> and tells you so. MENACE then starts learning its openings again. Michie's machine had no such rule.</p>
 
                 <h3>What you see on this page</h3>
                 <ul>
@@ -489,21 +490,28 @@
                     <li><strong>No box for the last square.</strong> When only one square is left, there is no choice to make.</li>
                 </ul>
                 <h3>How many beads does a new box get?</h3>
-                <p>Each board position has its own matchbox. As in Michie's machine, the starting number of beads depends on how far into the game that position comes:</p>
+                <p>Each board position has its own matchbox. The starting number of beads depends on how far into the game that position comes:</p>
                 <table>
                     <tr><th>MENACE's turn</th><th>Board when MENACE moves</th><th>Boxes</th><th>Starting beads per colour</th></tr>
-                    <tr><td>1st</td><td>empty</td><td>1</td><td>4</td></tr>
-                    <tr><td>2nd</td><td>2 marks</td><td>12</td><td>3</td></tr>
+                    <tr><td>1st</td><td>empty</td><td>1</td><td>8</td></tr>
+                    <tr><td>2nd</td><td>2 marks</td><td>12</td><td>4</td></tr>
                     <tr><td>3rd</td><td>4 marks</td><td>108</td><td>2</td></tr>
                     <tr><td>4th</td><td>6 marks</td><td>183</td><td>1</td></tr>
                 </table>
                 <p>These are only the starting counts. After every game, wins, draws and losses change the beads in each box that was used. Late boxes start with fewer beads so they learn faster: a single loss can empty a 1-bead move, while the empty-board box hardly notices. That makes sense, because a loss is usually caused by the last few moves.</p>
-                <p class="hint">The box counts are for MENACE moving first, as in Michie's original. When MENACE plays second, the same 4, 3, 2, 1 pattern is used for its turns.</p>
+                <p class="hint">Michie's machine started with 4, 3, 2, 1. This version gives the early boxes more beads (8, 4, 2, 1, as in Matthew Scroggs's MENACE), so a strong player cannot empty the first box so quickly. The box counts are for MENACE moving first, as in the original. When MENACE plays second, the same pattern is used for its turns.</p>
 
                 <details>
                     <summary>For the curious: the exact count</summary>
                     <p>There are 5,478 legal boards. Of these, 2,423 have X to move with the game still open. Removing the 222 boards where only one square is left gives 2,201. Merging turned and flipped copies gives <strong>304</strong>, exactly the number Michie used. When MENACE plays O instead, it needs 289 boxes.</p>
                 </details>
+
+                <h3>How this version differs from Michie's original</h3>
+                <ul>
+                    <li><strong>More starting beads in early boxes:</strong> 8, 4, 2, 1 instead of 4, 3, 2, 1.</li>
+                    <li><strong>The first-move box is refilled when it empties</strong>, so MENACE never gets stuck giving up every game.</li>
+                    <li><strong>MENACE can also play second</strong> (as O). Michie's MENACE always moved first.</li>
+                </ul>
 
                 <h3>Limits</h3>
                 <p>MENACE works because tic-tac-toe is small. A game like chess has far too many positions to give each one a box. Modern systems use <em>neural networks</em> instead. They learn from similar positions at once, so they do not need to see every position.</p>
@@ -554,7 +562,7 @@
                 <div id="matchbox-display">
                     <!-- Move options will be populated here -->
                     <p>No game started yet.</p>
-                    <p class="bead-info" style="font-size: 0.8em; color: #555;">Starting beads per move: 4, 3, 2, 1 on MENACE's 1st to 4th turn</p>
+                    <p class="bead-info" style="font-size: 0.8em; color: #555;">Starting beads per move: 8, 4, 2, 1 on MENACE's 1st to 4th turn</p>
                 </div>
 
                 <div id="learning-level">
@@ -589,7 +597,8 @@
         const STORAGE_KEY_STATS = 'menace_stats';
         
         // Beads per move on MENACE's first turn; each later turn starts with one fewer
-        const INITIAL_BEADS = 4;
+        // Starting beads per move on MENACE's 1st, 2nd, 3rd and 4th turn (Michie used 4, 3, 2, 1)
+        const STARTING_BEADS = [8, 4, 2, 1];
 
         // Represents a single move (0-8) and its associated bead count
         class MatchboxEntry {
@@ -734,19 +743,32 @@
          * - If only one square is empty, the move is forced, so no matchbox is used.
          * - Otherwise the move comes from the matchbox for this position.
          * @param {boolean} readOnly - If true, never store a new matchbox (used for testing).
-         * @returns {{cell:number, move:number|null, key:string|null}|null} null means resign.
+         * @returns {{cell:number, move:number|null, key:string|null, refilled:boolean}|null} null means resign.
          */
         function menaceChoice(board, side, readOnly = false) {
             if (board.filter(c => c === null).length === 1) {
-                return { cell: board.indexOf(null), move: null, key: null };
+                return { cell: board.indexOf(null), move: null, key: null, refilled: false };
             }
             const form = canonicalForm(board, side);
-            const matchbox = readOnly
+            let matchbox = readOnly
                 ? (MENACE_MATCHBOX[form.key] || freshMatchbox(board, side))
                 : getMatchbox(board, side);
+
+            // Resigning on MENACE's first turn changes no beads, so an empty box there would resign forever
+            const isFirstTurn = board.filter(c => c !== null).length < 2;
+            let refilled = false;
+            if (isFirstTurn && matchbox.every(e => e.beads === 0)) {
+                matchbox = freshMatchbox(board, side);
+                refilled = true;
+                if (!readOnly) {
+                    MENACE_MATCHBOX[form.key] = matchbox;
+                    GAME_STATS.refills = (GAME_STATS.refills || 0) + 1;
+                }
+            }
+
             const move = selectMove(matchbox);
             if (move === null) return null;
-            return { cell: form.toReal[move], move, key: form.key };
+            return { cell: form.toReal[move], move, key: form.key, refilled };
         }
 
         /**
@@ -820,7 +842,7 @@
             // Symmetries that leave the board unchanged make some moves equivalent
             const stabilizer = SYMMETRIES.filter(m => m.every((src, j) => canon[src] === canon[j]));
             const placed = board.filter(c => c !== null).length;
-            const beads = INITIAL_BEADS - Math.floor(placed / 2);
+            const beads = STARTING_BEADS[Math.floor(placed / 2)];
             const entries = [];
             for (let j = 0; j < 9; j++) {
                 // Keep only the lowest-numbered move of each equivalent group
@@ -1380,7 +1402,9 @@
             } else {
                 // Switch turn back to human
                 gameState.currentPlayer = gameState.humanMark; 
-                updateStatus("It's your turn! Make a move.");
+                updateStatus(choice.refilled
+                    ? "MENACE had lost with every opening, so its first matchbox was empty. It has been refilled with fresh beads and MENACE starts learning its openings again. Your turn!"
+                    : "It's your turn! Make a move.");
             }
 
             updateMatchboxDisplay(boardBefore, gameState.menaceMark);
@@ -1418,7 +1442,8 @@
 
         function renderStats() {
             const s = GAME_STATS;
-            statsElement.textContent = `All games: ${s.totalGames} · MENACE wins ${s.menaceWins} · draws ${s.draws} · MENACE losses ${s.humanWins} (${s.resignations || 0} by resigning)`;
+            statsElement.textContent = `All games: ${s.totalGames} · MENACE wins ${s.menaceWins} · draws ${s.draws} · MENACE losses ${s.humanWins} (${s.resignations || 0} by resigning)`
+                + (s.refills ? ` · first-move box refilled ${s.refills}×` : '');
         }
 
         /**

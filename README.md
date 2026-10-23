@@ -7,7 +7,10 @@ matchboxes and beads, and it needs no computer.
 Play it online at: **https://etnt.github.io/menace/**
 
 The original MENACE was built in 1961 by Donald Michie. Read more on
-[Wikipedia](https://en.wikipedia.org/wiki/Matchbox_Educable_Noughts_and_Crosses_Engine).
+[Wikipedia](https://en.wikipedia.org/wiki/Matchbox_Educable_Noughts_and_Crosses_Engine),
+or in Matthew Scroggs's [blog post about MENACE](https://www.mscroggs.co.uk/blog/19).
+Scroggs built a physical copy of MENACE and has an
+[online version](https://www.mscroggs.co.uk/menace/) to play against.
 
 This version runs in your browser. It is one file: `index.html`.
 
@@ -17,11 +20,9 @@ This version runs in your browser. It is one file: `index.html`.
 - A matchbox holds **beads**. Each bead is one possible move. Moves that are
   mirror copies of each other share one kind of bead.
 - Each board position has its own matchbox. The box for the empty board
-  starts with 4 beads of each colour. Boxes for positions MENACE meets later
-  start with fewer: 3 on its second turn, 2 on its third, 1 on its fourth.
-  After that, wins, draws and losses change the counts. (Michie's MENACE
-  always moved first; this version uses the same pattern when MENACE plays
-  second.)
+  starts with 8 beads of each colour. Boxes for positions MENACE meets later
+  start with fewer: 4 on its second turn, 2 on its third, 1 on its fourth.
+  After that, wins, draws and losses change the counts.
 - To play, MENACE picks a bead at random from the matchbox for the
   current position. More beads for a move means a higher chance to pick it.
 - After each game, MENACE updates the beads it used:
@@ -32,6 +33,20 @@ This version runs in your browser. It is one file: `index.html`.
   a loss, and its moves lose beads.
 
 Over many games, MENACE learns to avoid bad moves and prefer good ones.
+
+## Differences from Michie's original
+
+- **More starting beads in early boxes:** 8, 4, 2, 1 instead of Michie's
+  4, 3, 2, 1 (as in Matthew Scroggs's
+  [MENACE](https://www.mscroggs.co.uk/blog/19)). A strong player then cannot
+  empty the first box as quickly.
+- **The first-move box is refilled when it empties.** In the original, if
+  you beat MENACE often enough, its first box runs out. It then resigns
+  before making a move, so no beads change, and it resigns in every game
+  after that. This version refills that box with fresh beads, tells the
+  player, and counts the refills in the stats. Other boxes still empty and
+  cause resignations as in the original.
+- **MENACE can play second** (as O), using the same rules for its turns.
 
 ## What you can do
 
